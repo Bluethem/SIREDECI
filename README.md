@@ -2,9 +2,7 @@
 
 ## Tabla de Contenido
 
----
-
-### FASE 1: REQUISITOS
+### Fase 1: Requisitos
 
 - [1. Descripción del Proyecto](./1-requisitos/1.1-descripcion.md)
   - [1.1. Introducción](./1-requisitos/1.1-descripcion.md#introduccion)
@@ -16,9 +14,7 @@
 - [4. Requerimientos de Seguridad](./1-requisitos/1.4-requisitos-seguridad.md)
 - [5. Requerimientos Regulatorios y Legales](./1-requisitos/1.5-requisitos-legales.md)
 
----
-
-### FASE 2: DISEÑO DEL SISTEMA
+### Fase 2: Diseño del Sistema
 
 - [6. Arquitectura del Sistema](./2-diseno/2.1-arquitectura.md)
 - [7. Diseño Conceptual](./2-diseno/2.2-diseno-conceptual.md)
@@ -39,9 +35,7 @@
   - [11.5. Gestión de Sesiones](./2-diseno/2.6-diseno-seguridad.md#sesiones)
   - [11.6. Auditoría y Logs](./2-diseno/2.6-diseno-seguridad.md#auditoria)
 
----
-
-### FASE 3: IMPLEMENTACIÓN
+### Fase 3: Implementación
 
 - [12. Stack Tecnológico](./3-implementacion/3.1-stack-tecnologico.md)
   - [12.1. Frontend](./3-implementacion/3.1-stack-tecnologico.md#frontend)
@@ -75,9 +69,7 @@
 - [17. Documentación del Código](./3-implementacion/3.6-documentacion-codigo.md)
   - [17.1. README y Guías](./3-implementacion/3.6-documentacion-codigo.md#readme)
 
----
-
-### FASE 4: PRUEBAS
+### Fase 4: Pruebas
 
 - [18. Plan de Pruebas](./4-pruebas/4.1-plan-pruebas.md)
   - [18.1. Estrategia de Pruebas](./4-pruebas/4.1-plan-pruebas.md#estrategia)
@@ -102,9 +94,7 @@
   - [21.5. Encriptación](./4-pruebas/4.4-pruebas-seguridad.md#encriptacion)
   - [21.6. OWASP Top 10](./4-pruebas/4.4-pruebas-seguridad.md#owasp)
 
----
-
-### FASE 5: DESPLIEGUE
+### Fase 5: Despliegue
 
 - [22. Estrategia de Despliegue](./5-despliegue/5.1-estrategia-despliegue.md)
   - [22.1. Metodología](./5-despliegue/5.1-estrategia-despliegue.md#metodologia)
@@ -112,9 +102,7 @@
   - [22.3. Roles y Responsabilidades](./5-despliegue/5.1-estrategia-despliegue.md#roles)
   - [22.4. Plan de Rollback](./5-despliegue/5.1-estrategia-despliegue.md#rollback)
 
----
-
-### FASE 6: MANTENIMIENTO
+### Fase 6: Mantenimiento
 
 - [23. Plan de Mantenimiento](./6-mantenimiento/6.1-plan-mantenimiento.md)
   - [23.1. Tipos](./6-mantenimiento/6.1-plan-mantenimiento.md#tipos)
