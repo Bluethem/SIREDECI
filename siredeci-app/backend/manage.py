@@ -1,12 +1,17 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
 
+# Forzar UTF-8 para evitar problemas de encoding en Windows
+os.environ['PYTHONUTF8'] = '1'
+
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+    # Usar configuración directa por defecto para evitar problemas de encoding
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.direct')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

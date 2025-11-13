@@ -1,12 +1,53 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>SIREDECI - Sistema de Denuncias Ciudadanas</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Material Symbols Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'primary': '#2e87ad',
+              'background-light': '#f6f7f8',
+              'background-dark': '#131b1f',
+            },
+            fontFamily: {
+              'display': ['Public Sans', 'sans-serif']
+            },
+            borderRadius: {
+              'DEFAULT': '0.25rem',
+              'lg': '0.5rem',
+              'xl': '0.75rem',
+              'full': '9999px'
+            },
+          },
+        },
+      }
+    </script>
+    <style>
+      /* Forzar sin padding/margin global */
+      html, body, #app {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+    </style>
   </head>
-  <body>
+  <body class="font-display m-0 p-0">
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>
