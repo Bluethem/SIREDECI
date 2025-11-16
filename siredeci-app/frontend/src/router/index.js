@@ -4,7 +4,12 @@ const routes = [
   {
     path: '/',
     name: 'home',
-    redirect: '/ciudadano/login'
+    component: () => import('../views/public/LandingPage.vue')
+  },
+  {
+    path: '/admin/login',
+    name: 'admin-login',
+    component: () => import('../views/admin/LoginAdmin.vue')
   },
   {
     path: '/ciudadano/login',
