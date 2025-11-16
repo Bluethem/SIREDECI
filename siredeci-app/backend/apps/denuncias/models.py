@@ -1,5 +1,6 @@
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator, EmailValidator
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from apps.ciudadanos.models import Ciudadano
 from apps.categorias.models import Categoria
@@ -151,19 +152,22 @@ class Denuncia(models.Model):
         null=True,
         blank=True,
         related_name='denuncias',
-        verbose_name='Ciudadano'
+        verbose_name='Ciudadano',
+        db_column='id_ciudadano'
     )
     id_categoria = models.ForeignKey(
         Categoria,
         on_delete=models.PROTECT,
         related_name='denuncias',
-        verbose_name='Categoría'
+        verbose_name='Categoría',
+        db_column='id_categoria'
     )
     id_ubicacion = models.ForeignKey(
         Ubicacion,
         on_delete=models.PROTECT,
         related_name='denuncias',
-        verbose_name='Ubicación'
+        verbose_name='Ubicación',
+        db_column='id_ubicacion'
     )
     
     class Meta:
@@ -337,13 +341,15 @@ class Seguimiento(models.Model):
         Denuncia,
         on_delete=models.CASCADE,
         related_name='seguimientos',
-        verbose_name='Denuncia'
+        verbose_name='Denuncia',
+        db_column='id_denuncia'
     )
     id_usuario = models.ForeignKey(
         Usuario,
         on_delete=models.PROTECT,
         related_name='seguimientos',
-        verbose_name='Usuario'
+        verbose_name='Usuario',
+        db_column='id_usuario'
     )
     
     class Meta:
@@ -369,3 +375,145 @@ class Seguimiento(models.Model):
                 new_id = 1
             self.codigo_seguimiento = f'SEG-{new_id:05d}'
         super().save(*args, **kwargs)
+
+
+class EvidenciaResolucion(models.Model):
+    """
+    Evidencias fotográficas de la resolución
+    """
+    
+    TIPOS_ARCHIVO = [
+        ('image/jpeg', 'JPEG'),
+        ('image/png', 'PNG'),
+        ('application/pdf', 'PDF'),
+    ]
+    
+    id_evidencia_resolucion = models.AutoField(primary_key=True)
+    nombre_archivo = models.CharField(
+        max_length=255,
+        verbose_name='Nombre del Archivo'
+    )
+    ruta_almacenamiento = models.CharField(
+        max_length=500,
+        unique=True,
+        verbose_name='Ruta de Almacenamiento'
+    )
+    tipo_archivo = models.CharField(
+        max_length=100,
+        choices=TIPOS_ARCHIVO,
+        verbose_name='Tipo de Archivo'
+    )
+    tamaño_bytes = models.BigIntegerField(
+        verbose_name='Tamaño en Bytes'
+    )
+    fecha_carga = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Carga'
+    )
+    hash_archivo = models.CharField(
+        max_length=64,
+        unique=True,
+        verbose_name='Hash del Archivo (SHA-256)'
+    )
+    id_tramitacion = models.ForeignKey(
+        'personal.Tramitacion',
+        on_delete=models.CASCADE,
+        related_name='evidencias_resolucion',
+        verbose_name='Tramitación'
+    )
+    
+    class Meta:
+        db_table = 'evidenciaresolucion'
+        verbose_name = 'Evidencia de Resolución'
+        verbose_name_plural = 'Evidencias de Resolución'
+        indexes = [
+            models.Index(fields=['id_tramitacion'], name='idx_ev_res_tramitacion'),
+        ]
+    
+    def __str__(self):
+        return f"{self.nombre_archivo}"
+    
+    def clean(self):
+        if self.tamaño_bytes <= 0:
+            raise ValidationError('El tamaño del archivo debe ser mayor a cero')
+
+
+class Resolucion(models.Model):
+    """
+    Resultado final de la atención de una denuncia
+    """
+    
+    TIPOS = [
+        ('Resuelta', 'Resuelta'),
+        ('Rechazada', 'Rechazada'),
+        ('Duplicada', 'Duplicada'),
+        ('No procede', 'No procede'),
+    ]
+    
+    id_resolucion = models.AutoField(primary_key=True)
+    codigo_resolucion = models.CharField(
+        max_length=20,
+        unique=True,
+        verbose_name='Código de Resolución'
+    )
+    fecha_resolucion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Resolución'
+    )
+    tipo_resolucion = models.CharField(
+        max_length=20,
+        choices=TIPOS,
+        verbose_name='Tipo de Resolución'
+    )
+    descripcion_resolucion = models.TextField(
+        verbose_name='Descripción de la Resolución'
+    )
+    tiempo_total_horas = models.IntegerField(
+        verbose_name='Tiempo Total en Horas'
+    )
+    calificacion_ciudadano = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name='Calificación del Ciudadano (1-5)'
+    )
+    comentario_ciudadano = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name='Comentario del Ciudadano'
+    )
+    id_tramitacion = models.ForeignKey(
+        'personal.Tramitacion',
+        on_delete=models.CASCADE,
+        related_name='resoluciones',
+        verbose_name='Tramitación',
+        db_column='id_tramitacion'
+    )
+    
+    class Meta:
+        db_table = 'resolucion'
+        verbose_name = 'Resolución'
+        verbose_name_plural = 'Resoluciones'
+        indexes = [
+            models.Index(fields=['tipo_resolucion'], name='idx_resolucion_tipo'),
+            models.Index(fields=['fecha_resolucion'], name='idx_resolucion_fecha'),
+        ]
+    
+    def __str__(self):
+        return f"{self.codigo_resolucion} - {self.tipo_resolucion}"
+    
+    def save(self, *args, **kwargs):
+        if not self.codigo_resolucion:
+            last_resolucion = Resolucion.objects.all().order_by('id_resolucion').last()
+            if last_resolucion:
+                new_id = last_resolucion.id_resolucion + 1
+            else:
+                new_id = 1
+            self.codigo_resolucion = f'RES-{new_id:05d}'
+        super().save(*args, **kwargs)
+    
+    def clean(self):
+        if self.tiempo_total_horas <= 0:
+            raise ValidationError('El tiempo total debe ser mayor a cero')
+        if self.calificacion_ciudadano and not (1 <= self.calificacion_ciudadano <= 5):
+            raise ValidationError('La calificación debe estar entre 1 y 5')

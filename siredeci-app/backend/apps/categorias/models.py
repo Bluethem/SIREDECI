@@ -54,11 +54,12 @@ class AreaResponsable(models.Model):
         null=True,
         blank=True,
         related_name='areas_a_cargo',
-        verbose_name='Jefe de Área'
+        verbose_name='Jefe de Área',
+        db_column='id_jefe_area'
     )
     
     class Meta:
-        db_table = 'area_responsable'
+        db_table = 'arearesponsable'
         verbose_name = 'Área Responsable'
         verbose_name_plural = 'Áreas Responsables'
         indexes = [
