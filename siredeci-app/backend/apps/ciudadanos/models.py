@@ -78,7 +78,8 @@ class Ciudadano(models.Model):
         null=True,
         blank=True,
         related_name='ciudadano',
-        verbose_name='Usuario'
+        verbose_name='Usuario',
+        db_column='id_usuario'
     )
     
     class Meta:
@@ -126,7 +127,8 @@ class CiudadanoTelefono(models.Model):
         Ciudadano,
         on_delete=models.CASCADE,
         related_name='telefonos',
-        verbose_name='Ciudadano'
+        verbose_name='Ciudadano',
+        db_column='id_ciudadano'
     )
     telefono = models.CharField(
         max_length=20,
@@ -139,7 +141,7 @@ class CiudadanoTelefono(models.Model):
     )
     
     class Meta:
-        db_table = 'ciudadano_telefono'
+        db_table = 'ciudadanotelefono'
         verbose_name = 'Teléfono de Ciudadano'
         verbose_name_plural = 'Teléfonos de Ciudadanos'
         unique_together = [['id_ciudadano', 'telefono']]
