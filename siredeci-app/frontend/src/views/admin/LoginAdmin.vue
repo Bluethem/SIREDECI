@@ -113,13 +113,9 @@ export default {
         // Configurar el header de autorización para futuras peticiones
         axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`
 
-        // Redirigir al dashboard de admin (cuando esté creado)
-        // Por ahora comentado hasta que se cree la ruta
-        // this.$router.push('/admin/dashboard').catch(() => {})
-        
-        // Por ahora mostrar mensaje de éxito
+        // Redirigir al dashboard de admin
+        this.$router.push('/admin/dashboard').catch(() => {})
         console.log('Login exitoso', response.data)
-        alert('Login exitoso. El dashboard de administrador será creado próximamente.')
         
       } catch (error) {
         // Manejar errores de la API

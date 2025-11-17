@@ -12,6 +12,36 @@ const routes = [
     component: () => import('../views/admin/LoginAdmin.vue')
   },
   {
+    path: '/admin/dashboard',
+    name: 'admin-dashboard',
+    component: () => import('../views/admin/DashboardAdmin.vue')
+  },
+  {
+    path: '/admin/analisis-geografico',
+    name: 'admin-analisis-geografico',
+    component: () => import('../views/admin/AnalisisGeografico.vue')
+  },
+  {
+    path: '/admin/indicadores',
+    name: 'admin-indicadores',
+    component: () => import('../views/admin/Indicadores.vue')
+  },
+  {
+    path: '/admin/desempeno',
+    name: 'admin-desempeno',
+    component: () => import('../views/admin/RankingDesempeno.vue')
+  },
+  {
+    path: '/admin/reportes',
+    name: 'admin-reportes',
+    component: () => import('../views/admin/ReportesHub.vue')
+  },
+  {
+    path: '/admin/generador-reportes',
+    name: 'admin-generador-reportes',
+    component: () => import('../views/admin/GeneradorReportes.vue')
+  },
+  {
     path: '/ciudadano/login',
     name: 'ciudadano-login',
     component: () => import('../views/ciudadano/LoginCiudadano.vue')
