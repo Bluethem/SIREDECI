@@ -60,11 +60,17 @@
               <span class="truncate">1. Configuración</span>
               <input checked="" class="invisible w-0" name="wizard-step" type="radio" value="1. Configuración"/>
             </label>
-            <label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 text-gray-500 text-sm font-medium leading-normal">
+            <label
+              class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 text-gray-500 text-sm font-medium leading-normal hover:text-principal-blue"
+              @click.prevent="goTo('/admin/seleccion-datos-reportes')"
+            >
               <span class="truncate">2. Selección de datos</span>
               <input class="invisible w-0" name="wizard-step" type="radio" value="2. Selección de datos"/>
             </label>
-            <label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 text-gray-500 text-sm font-medium leading-normal">
+            <label
+              class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 text-gray-500 text-sm font-medium leading-normal hover:text-principal-blue"
+              @click.prevent="goTo('/admin/vista-previa-reportes')"
+            >
               <span class="truncate">3. Vista Previa y Generación</span>
               <input class="invisible w-0" name="wizard-step" type="radio" value="3. Vista Previa y Generación"/>
             </label>
@@ -115,23 +121,11 @@
             <!-- Section: Periodo del Reporte -->
             <div>
               <h2 class="text-\[22px\] font-bold leading-tight tracking-\[-0.015em\] pb-4 border-b border-gray-200 mb-6">Periodo del Reporte</h2>
-              <div class="flex flex-col md:flex-row gap-6 items-start">
-                <div class="flex-1 w-full">
-                  <p class="text-base font-medium leading-normal pb-2">Rango de fechas</p>
-                  <div class="relative flex items-center">
-                    <input v-model="form.rangoFechas" class="form-input w-full rounded-lg text-gray-900 focus:outline-0 focus:ring-2 focus:ring-primary\/50 border border-gray-300 bg-very-light-gray h-12 placeholder:text-gray-500 p-3 text-base font-normal" type="text" placeholder="Selecciona un rango de fechas" />
-                    <span class="material-symbols-outlined absolute right-3 text-gray-500">calendar_today</span>
-                  </div>
-                </div>
-                <div class="flex-shrink-0">
-                  <p class="text-base font-medium leading-normal pb-2">Opciones rápidas</p>
-                  <div class="flex flex-wrap gap-2">
-                    <button @click="setQuickRange('hoy')" :class="['px-3 py-1.5 rounded-full text-sm font-medium', quickRange === 'hoy' ? 'bg-primary text-white' : 'bg-gray-200 hover:bg-gray-300']">Hoy</button>
-                    <button @click="setQuickRange('ultima-semana')" :class="['px-3 py-1.5 rounded-full text-sm font-medium', quickRange === 'ultima-semana' ? 'bg-primary text-white' : 'bg-gray-200 hover:bg-gray-300']">Últ. semana</button>
-                    <button @click="setQuickRange('ultimo-mes')" :class="['px-3 py-1.5 rounded-full text-sm font-medium', quickRange === 'ultimo-mes' ? 'bg-primary text-white' : 'bg-gray-200 hover:bg-gray-300']">Últ. mes</button>
-                    <button @click="setQuickRange('ultimo-trimestre')" :class="['px-3 py-1.5 rounded-full text-sm font-medium', quickRange === 'ultimo-trimestre' ? 'bg-primary text-white' : 'bg-gray-200 hover:bg-gray-300']">Últ. trimestre</button>
-                    <button @click="setQuickRange('ultimo-ano')" :class="['px-3 py-1.5 rounded-full text-sm font-medium', quickRange === 'ultimo-ano' ? 'bg-primary text-white' : 'bg-gray-200 hover:bg-gray-300']">Últ. año</button>
-                  </div>
+              <div>
+                <p class="text-base font-medium leading-normal pb-2">Rango de fechas</p>
+                <div class="relative flex items-center">
+                  <input v-model="form.rangoFechas" class="form-input w-full rounded-lg text-gray-900 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 bg-very-light-gray h-12 placeholder:text-gray-500 p-3 text-base font-normal" type="text" placeholder="Selecciona un rango de fechas" />
+                  <span class="material-symbols-outlined absolute right-3 text-gray-500">calendar_today</span>
                 </div>
               </div>
             </div>
@@ -162,17 +156,6 @@
                 </label>
               </div>
             </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="mt-10 pt-6 border-t border-gray-200 flex justify-end gap-4">
-            <button @click="guardarBorrador" class="flex items-center justify-center overflow-hidden rounded-lg h-11 px-6 bg-gray-200 text-gray-900 text-base font-bold hover:bg-gray-300 transition-colors">
-              <span class="truncate">Guardar borrador</span>
-            </button>
-            <button @click="siguientePaso" class="flex items-center justify-center overflow-hidden rounded-lg h-11 px-6 bg-principal-blue text-white text-base font-bold hover:bg-principal-blue\/90 transition-colors">
-              <span class="truncate">Siguiente: Selección de Datos</span>
-              <span class="material-symbols-outlined ml-2">arrow_forward</span>
-            </button>
           </div>
         </main>
       </div>
@@ -233,6 +216,9 @@ export default {
     siguientePaso() {
       // TODO: Implementar navegación al siguiente paso
       console.log('Siguiente paso...', this.form)
+    },
+    goTo(path) {
+      this.$router.push(path).catch(() => {})
     }
   }
 }

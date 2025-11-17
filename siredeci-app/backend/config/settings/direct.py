@@ -132,6 +132,8 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(minutes=1440),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+    'USER_ID_FIELD': 'id_usuario',
+    'USER_ID_CLAIM': 'user_id',
 }
 
 # Media files

@@ -42,6 +42,16 @@ const routes = [
     component: () => import('../views/admin/GeneradorReportes.vue')
   },
   {
+    path: '/admin/seleccion-datos-reportes',
+    name: 'admin-seleccion-datos-reportes',
+    component: () => import('../views/admin/SeleccionDatosReportes.vue')
+  },
+  {
+    path: '/admin/vista-previa-reportes',
+    name: 'admin-vista-previa-reportes',
+    component: () => import('../views/admin/VistaPreviaReportes.vue')
+  },
+  {
     path: '/ciudadano/login',
     name: 'ciudadano-login',
     component: () => import('../views/ciudadano/LoginCiudadano.vue')
