@@ -7,6 +7,10 @@ const routes = [
     component: () => import('../views/public/LandingPage.vue')
   },
   {
+    path: '/login',
+    redirect: '/ciudadano/login'
+  },
+  {
     path: '/admin/login',
     name: 'admin-login',
     component: () => import('../views/admin/LoginAdmin.vue')

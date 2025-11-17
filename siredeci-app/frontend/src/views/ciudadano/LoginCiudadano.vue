@@ -133,6 +133,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import authService from '@/services/auth'
 
 const router = useRouter()
 const loading = ref(false)
@@ -184,19 +185,19 @@ const handleLogin = async () => {
   errors.value.general = ''
 
   try {
-    // TODO: Llamar al API de autenticación
-    // const response = await loginCiudadano(formData.value)
+    // Llamar al API de autenticación real
+    const response = await authService.loginCiudadano(
+      formData.value.dni,
+      formData.value.fecha_emision
+    )
     
-    // Simulación de login (remover cuando se integre con backend)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    console.log('Login exitoso:', response)
     
-    // Si el login es exitoso, guardar token y redirigir
-    // localStorage.setItem('token', response.data.token)
-    // localStorage.setItem('user', JSON.stringify(response.data.user))
-    
+    // Redirigir al dashboard
     router.push({ name: 'ciudadano-dashboard' })
   } catch (error) {
-    errors.value.general = error.response?.data?.message || 'DNI o fecha de emisión incorrectos. Por favor, verifique sus datos.'
+    console.error('Error en login:', error)
+    errors.value.general = error.response?.data?.error || 'DNI o fecha de emisión incorrectos. Por favor, verifique sus datos.'
   } finally {
     loading.value = false
   }

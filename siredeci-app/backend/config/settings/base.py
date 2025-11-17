@@ -2,6 +2,25 @@
 from pathlib import Path
 from decouple import config
 import os
+import sys
+
+# Fix para Python 3.13 con psycopg2 - DEBE IR ANTES DE CUALQUIER IMPORT DE DJANGO
+if sys.version_info >= (3, 13):
+    import locale
+    import warnings
+    warnings.filterwarnings('ignore', category=DeprecationWarning)
+    
+    # Configurar locale para evitar problemas de encoding con psycopg2
+    try:
+        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+    except:
+        try:
+            locale.setlocale(locale.LC_ALL, 'C.UTF-8')
+        except:
+            try:
+                locale.setlocale(locale.LC_ALL, '')
+            except:
+                pass
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -86,6 +105,7 @@ DATABASES = {
         'PORT': config('DB_PORT', default='5432'),
         'OPTIONS': {
             'client_encoding': 'UTF8',
+            'connect_timeout': 10,
         },
         'CONN_MAX_AGE': 0,
         'ATOMIC_REQUESTS': False,
@@ -123,11 +143,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Django REST Framework
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': [],  # Sin autenticación por defecto
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',  # Todos los endpoints públicos por defecto
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,

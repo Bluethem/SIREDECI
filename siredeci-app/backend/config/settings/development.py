@@ -4,11 +4,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
-# Database con nombre diferente para desarrollo
+# Database usando el nombre del .env
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'siredeci_db',
+        'NAME': config('DB_NAME'),  # Usa el nombre del .env: siredecidb
         'USER': config('DB_USER'),
         'PASSWORD': config('DB_PASSWORD'),
         'HOST': config('DB_HOST'),

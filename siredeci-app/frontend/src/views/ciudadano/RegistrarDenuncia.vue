@@ -333,9 +333,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import NavbarCiudadano from '@/components/NavbarCiudadano.vue'
+import denunciasService from '@/services/denuncias'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -649,30 +650,105 @@ const removeImage = (index) => {
 const submitDenuncia = async () => {
   if (!acceptedTerms.value) return
   
-  // Aquí irá la lógica para enviar al backend
-  console.log('Enviando denuncia:', {
-    categoria: selectedCategory.value,
-    ...form.value
-  })
-  
-  // TODO: Llamar al API para registrar la denuncia
-  // const response = await api.post('/denuncias', {...})
-  // const denunciaId = response.data.id
-  
-  // Simular respuesta del backend
-  const denunciaId = Math.floor(Math.random() * 1000) + 1 // ID simulado
-  const codigoDenuncia = `DEN-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(5, '0')}`
-  const numeroSeguimiento = `TRK-${Date.now()}`
-  
-  // Redirigir a la pantalla de éxito con los códigos
-  router.push({
-    name: 'ciudadano-denuncia-exitosa',
-    query: {
-      id: denunciaId,
-      codigo: codigoDenuncia,
-      seguimiento: numeroSeguimiento
+  try {
+    // Obtener ciudadano del localStorage (debe estar guardado al hacer login)
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    
+    // Validar que haya usuario
+    if (!user.id_ciudadano) {
+      console.error('❌ No hay sesión activa')
+      alert('Debes iniciar sesión para registrar una denuncia.')
+      router.push({ name: 'ciudadano-login' })
+      return
     }
-  })
+    
+    // Preparar datos de la denuncia
+    const lat = parseFloat(form.value.ubicacion.latitud)
+    const lng = parseFloat(form.value.ubicacion.longitud)
+    
+    // Si no hay dirección, generar una basada en las coordenadas
+    let direccion = form.value.ubicacion.direccion
+    if (!direccion || direccion.trim() === '') {
+      direccion = `Ubicación: ${lat.toFixed(6)}°, ${lng.toFixed(6)}°`
+    }
+    
+    const denunciaData = {
+      titulo: form.value.titulo,
+      descripcion: form.value.descripcion,
+      id_categoria: selectedCategory.value.id,
+      id_ciudadano: user.id_ciudadano,
+      es_anonima: false, // Por defecto no es anónima si hay usuario
+      prioridad: 'Media', // Prioridad por defecto
+      ubicacion: {
+        latitud: lat,
+        longitud: lng,
+        direccion: direccion,
+        referencia: form.value.ubicacion.referencia || '',
+        distrito: form.value.ubicacion.distrito || 'Lima',
+        codigo_postal: form.value.ubicacion.codigoPostal || ''
+      }
+    }
+    
+    console.log('Enviando denuncia al backend:', denunciaData)
+    
+    // Llamar al API para registrar la denuncia
+    const response = await denunciasService.crearDenuncia(denunciaData)
+    
+    console.log('Respuesta del backend:', response)
+    
+    // Extraer datos de la respuesta
+    const denuncia = response.denuncia || response
+    const denunciaId = denuncia.id_denuncia
+    const codigoDenuncia = denuncia.codigo_denuncia
+    const numeroSeguimiento = denuncia.numero_seguimiento
+    
+    // Redirigir a la pantalla de éxito con los códigos reales
+    router.push({
+      name: 'ciudadano-denuncia-exitosa',
+      query: {
+        id: denunciaId,
+        codigo: codigoDenuncia,
+        seguimiento: numeroSeguimiento
+      }
+    })
+  } catch (error) {
+    console.error('❌ Error al registrar la denuncia:', error)
+    console.error('Detalles del error:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      mensaje: error.message
+    })
+    
+    // Determinar mensaje de error específico
+    let mensajeError = 'Hubo un error al registrar la denuncia. Por favor, inténtalo nuevamente.'
+    
+    if (error.response?.status === 400) {
+      // Error de validación
+      const errores = error.response.data
+      mensajeError = 'Errores de validación:\n'
+      
+      for (const [campo, mensajes] of Object.entries(errores)) {
+        if (Array.isArray(mensajes)) {
+          mensajeError += `- ${campo}: ${mensajes.join(', ')}\n`
+        } else if (typeof mensajes === 'object') {
+          mensajeError += `- ${campo}: ${JSON.stringify(mensajes)}\n`
+        } else {
+          mensajeError += `- ${campo}: ${mensajes}\n`
+        }
+      }
+    } else if (error.response?.status === 401) {
+      // No redirigir automáticamente, solo mostrar error
+      mensajeError = 'Error de autenticación. Por favor, intenta nuevamente o vuelve a iniciar sesión.'
+      console.error('💡 Si el problema persiste, cierra sesión e inicia sesión nuevamente')
+    } else {
+      mensajeError = error.response?.data?.mensaje || 
+                     error.response?.data?.error ||
+                     mensajeError
+    }
+    
+    // Mostrar mensaje de error al usuario
+    alert(mensajeError)
+  }
 }
 
 // Limpiar el mapa cuando el componente se desmonte para evitar memory leaks

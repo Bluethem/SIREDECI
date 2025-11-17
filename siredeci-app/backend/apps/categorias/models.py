@@ -136,7 +136,8 @@ class Categoria(models.Model):
         AreaResponsable,
         on_delete=models.PROTECT,
         related_name='categorias',
-        verbose_name='Área Responsable'
+        verbose_name='Área Responsable',
+        db_column='id_area_responsable'
     )
     
     class Meta:
