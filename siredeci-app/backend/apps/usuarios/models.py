@@ -134,6 +134,11 @@ class Usuario(models.Model):
     def is_authenticated(self):
         return True
     
+    @property
+    def id(self):
+        """Compatibilidad con librerías que esperan un campo `id`."""
+        return self.id_usuario
+    
     def save(self, *args, **kwargs):
         # Auto-generar código de usuario si no existe
         if not self.codigo_usuario:

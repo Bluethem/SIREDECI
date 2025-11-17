@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from django.contrib.auth import authenticate
+from django.contrib.auth.hashers import check_password, make_password
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
 from apps.usuarios.models import Usuario
@@ -54,21 +54,33 @@ class LoginAdminSerializer(serializers.Serializer):
                     'message': f'Su estado laboral es {personal.estado_laboral}. Contacte al administrador.'
                 })
 
-            # Autenticar usuario (Django usa username por defecto, pero nosotros usamos email)
-            # Necesitamos autenticar usando el nombre_usuario
-            user = authenticate(
-                username=usuario.nombre_usuario,
-                password=password
-            )
+            password_is_valid = False
+            stored_hash = usuario.password_hash or ''
 
-            if not user:
+            # Intentar validar con los hashers configurados en Django
+            if stored_hash:
+                password_is_valid = check_password(password, stored_hash)
+
+            # Compatibilidad con hashes legacy tipo bcrypt plano "$2b$..."
+            if not password_is_valid and stored_hash.startswith('$2b$'):
+                try:
+                    import bcrypt
+
+                    password_is_valid = bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
+                    if password_is_valid:
+                        # Rehash con el hasher por defecto de Django para futuros logins
+                        usuario.password_hash = make_password(password)
+                except Exception:
+                    password_is_valid = False
+
+            if not password_is_valid:
                 # Incrementar intentos de login fallidos
                 usuario.intentos_login += 1
                 if usuario.intentos_login >= 5:
                     usuario.estado_cuenta = 'Bloqueado'
                     usuario.fecha_bloqueo = timezone.now()
                 usuario.save()
-                
+
                 raise serializers.ValidationError({
                     'error': 'Credenciales inválidas',
                     'message': 'El email o contraseña proporcionados son incorrectos.'

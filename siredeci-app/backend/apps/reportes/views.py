@@ -26,46 +26,25 @@ def dashboard_summary(request):
     # Pendientes de validación
     pendientes_validacion = Denuncia.objects.filter(requiere_validacion=True).count()
 
-    # Distribución por estado
-    estados_qs = (
-        Denuncia.objects.values('estado')
-        .annotate(count=Count('id_denuncia'))
-    )
-    estados_counts = {row['estado']: row['count'] for row in estados_qs}
+    # Distribución por estado - simplificado
+    estados_counts = {}
+    try:
+        estados_qs = (
+            Denuncia.objects.values('estado')
+            .annotate(count=Count('id_denuncia'))
+        )
+        estados_counts = {row['estado']: row['count'] for row in estados_qs}
+    except Exception as e:
+        print(f"Error en estados_qs: {e}")
+        estados_counts = {}
 
-    # Distribución por prioridad
-    prioridades_qs = (
-        Denuncia.objects.values('prioridad')
-        .annotate(count=Count('id_denuncia'))
-    )
-    prioridades_counts = {row['prioridad']: row['count'] for row in prioridades_qs}
-
-    # Promedio de tiempo de atención (en horas) desde Resolucion
-    avg_tiempo_atencion = Resolucion.objects.aggregate(
-        avg_horas=Avg('tiempo_total_horas')
-    )['avg_horas'] or 0
-
-    # Satisfacción promedio (1-5) desde Resolucion
-    avg_satisfaccion = Resolucion.objects.aggregate(
-        avg=Avg('calificacion_ciudadano')
-    )['avg'] or 0
-
-    # Tasa de resolución: % de denuncias con estado 'Resuelta' sobre total
-    resueltas_count = estados_counts.get('Resuelta', 0)
-    tasa_resolucion = round((resueltas_count * 100.0 / total_denuncias), 2) if total_denuncias else 0.0
-
-    # Armar respuesta
     data = {
-        'total_denuncias': total_denuncias,
+        'total': total_denuncias,
         'hoy': {
             'denuncias_hoy': denuncias_hoy,
             'pendientes_validacion': pendientes_validacion,
         },
         'estados': estados_counts,
-        'prioridades': prioridades_counts,
-        'avg_tiempo_atencion_horas': float(avg_tiempo_atencion),
-        'avg_satisfaccion': round(float(avg_satisfaccion), 2) if avg_satisfaccion else 0.0,
-        'tasa_resolucion': tasa_resolucion,
     }
 
     return Response(data)
@@ -188,25 +167,32 @@ def dashboard_prioridades(request):
 def dashboard_alerts(request):
     """
     Alertas simples para panel derecho.
-    - Urgentes sin asignar: prioridad Urgente y estado no en ('Asignado','En proceso','Resuelta','Cerrada')
-    - Próximas a vencer (24h): en proceso con fecha_registro hace > 24h
     """
-    urgentes_sin_asignar = Denuncia.objects.filter(
-        prioridad='Urgente'
-    ).exclude(
-        estado__in=['Asignado', 'En proceso', 'Resuelta', 'Cerrada']
-    ).count()
+    try:
+        # Urgentes sin asignar
+        urgentes_sin_asignar = Denuncia.objects.filter(
+            prioridad='Urgente'
+        ).exclude(
+            estado__in=['Asignado', 'En proceso', 'Resuelta', 'Cerrada']
+        ).count()
 
-    hace_24h = timezone.now() - timezone.timedelta(hours=24)
-    proximas_vencer = Denuncia.objects.filter(
-        estado='En proceso',
-        fecha_registro__lte=hace_24h
-    ).count()
+        # Próximas a vencer (24h)
+        hace_24h = timezone.now() - timezone.timedelta(hours=24)
+        proximas_vencer = Denuncia.objects.filter(
+            estado='En proceso',
+            fecha_registro__lte=hace_24h
+        ).count()
 
-    return Response({
-        'urgentes_sin_asignar': urgentes_sin_asignar,
-        'proximas_vencer_24h': proximas_vencer,
-    })
+        return Response({
+            'urgentes_sin_asignar': urgentes_sin_asignar,
+            'proximas_vencer_24h': proximas_vencer,
+        })
+    except Exception as e:
+        print(f"Error en dashboard_alerts: {e}")
+        return Response({
+            'urgentes_sin_asignar': 0,
+            'proximas_vencer_24h': 0,
+        })
 
 
 @api_view(['GET'])

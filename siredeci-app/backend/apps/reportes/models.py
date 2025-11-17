@@ -24,6 +24,13 @@ class Reporte(models.Model):
         ('JSON', 'JSON'),
     ]
     
+    ESTADOS_GENERACION = [
+        ('Borrador', 'Borrador'),
+        ('En progreso', 'En progreso'),
+        ('Completado', 'Completado'),
+        ('Fallido', 'Fallido'),
+    ]
+    
     id_reporte = models.AutoField(primary_key=True)
     codigo_reporte = models.CharField(
         max_length=20,
@@ -74,6 +81,17 @@ class Reporte(models.Model):
         on_delete=models.PROTECT,
         related_name='reportes_generados',
         verbose_name='Usuario Generador'
+    )
+    estado_generacion = models.CharField(
+        max_length=20,
+        choices=ESTADOS_GENERACION,
+        default='Borrador',
+        verbose_name='Estado de Generación'
+    )
+    parametros_configuracion = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Parámetros de Configuración'
     )
     
     class Meta:
