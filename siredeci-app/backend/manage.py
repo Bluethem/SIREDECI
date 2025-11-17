@@ -6,6 +6,27 @@ import sys
 
 # Forzar UTF-8 para evitar problemas de encoding en Windows
 os.environ['PYTHONUTF8'] = '1'
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
+# Fix específico para Python 3.13 con psycopg2
+if sys.version_info >= (3, 13):
+    import locale
+    import warnings
+    
+    # Suprimir warnings de deprecación
+    warnings.filterwarnings('ignore', category=DeprecationWarning)
+    
+    # Configurar locale antes de que Django/psycopg2 se inicialicen
+    try:
+        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+    except:
+        try:
+            locale.setlocale(locale.LC_ALL, 'C.UTF-8')
+        except:
+            try:
+                locale.setlocale(locale.LC_ALL, '')
+            except:
+                pass
 
 
 def main():

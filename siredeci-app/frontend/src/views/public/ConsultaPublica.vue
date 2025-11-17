@@ -15,7 +15,7 @@
                 Consulta Pública de Denuncias
               </h2>
               <p class="text-[#587d8d] dark:text-slate-400 text-base font-normal leading-normal">
-                Ingrese el código de seguimiento para consultar el estado de una denuncia
+                Ingrese el código de denuncia o número de seguimiento
               </p>
             </div>
 
@@ -29,7 +29,7 @@
                   <input
                     v-model="codigoSeguimiento"
                     type="text"
-                    placeholder="Ej: SEG-ABC123456"
+                    placeholder="Ej: DEN-2025-00001 o SEG-ABC123456"
                     class="w-full h-14 pl-12 pr-4 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
                   />
                 </div>
@@ -168,6 +168,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import NavbarPublico from '@/components/NavbarPublico.vue'
+import denunciasService from '@/services/denuncias'
 
 const router = useRouter()
 const codigoSeguimiento = ref('')
@@ -185,42 +186,27 @@ const buscarDenuncia = async () => {
   denuncia.value = null
 
   try {
-    // TODO: Llamar al API para buscar la denuncia
-    // const response = await buscarDenunciaPublica(codigoSeguimiento.value)
+    // Llamar al API real para buscar la denuncia
+    const resultado = await denunciasService.buscarDenunciaPublica(codigoSeguimiento.value.trim())
     
-    // Simulación de datos (remover cuando se integre con backend)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Datos de ejemplo
+    // Formatear datos para la vista
     denuncia.value = {
-      codigo_denuncia: 'DEN-2025-00001',
-      titulo: 'Bache en Av. Principal',
-      descripcion: 'Hay un bache grande en la Av. Principal que causa problemas a los vehículos',
-      estado: 'En proceso',
-      prioridad: 'Media',
-      categoria: 'Infraestructura Vial',
-      fecha_registro: '2025-01-10T14:30:00',
-      ubicacion: 'Av. Principal 1234, Miraflores',
-      seguimiento: [
-        {
-          estado_nuevo: 'Registrado',
-          comentario: 'Denuncia registrada exitosamente',
-          fecha_hora: '2025-01-10T14:30:00'
-        },
-        {
-          estado_nuevo: 'En revisión',
-          comentario: 'La denuncia está siendo revisada por el área de Obras Públicas',
-          fecha_hora: '2025-01-11T10:00:00'
-        },
-        {
-          estado_nuevo: 'En proceso',
-          comentario: 'Se ha asignado un técnico para evaluar el daño',
-          fecha_hora: '2025-01-12T09:15:00'
-        }
-      ]
+      codigo_denuncia: resultado.codigo_denuncia,
+      titulo: resultado.titulo,
+      descripcion: resultado.descripcion,
+      estado: resultado.estado,
+      prioridad: resultado.prioridad,
+      categoria: resultado.categoria_nombre || 'Sin categoría',
+      fecha_registro: resultado.fecha_registro,
+      ubicacion: `${resultado.direccion || ''}, ${resultado.distrito || ''}`.trim(),
+      numero_seguimiento: resultado.numero_seguimiento,
+      seguimiento: [] // TODO: Agregar seguimiento cuando esté implementado en el backend
     }
+    
+    console.log('✅ Denuncia encontrada:', denuncia.value)
   } catch (err) {
-    error.value = 'No se pudo encontrar la denuncia. Verifique el código de seguimiento.'
+    console.error('❌ Error al buscar denuncia:', err)
+    error.value = 'No se encontró ninguna denuncia con ese código. Verifique e intente nuevamente.'
     denuncia.value = null
   } finally {
     loading.value = false

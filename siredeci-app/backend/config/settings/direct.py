@@ -75,10 +75,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'siredeci_db',
+        'NAME': 'siredecidb',  # Cambiado de siredeci_db a siredecidb
         'USER': 'postgres',
-        'PASSWORD': '12345',
-        'HOST': '127.0.0.1',  # Usar IP en lugar de 'localhost'
+        'PASSWORD': 'admin',    # Cambiado de 12345 a admin
+        'HOST': 'localhost',    # Cambiado de 127.0.0.1 a localhost
         'PORT': '5432',
         'OPTIONS': {
             'client_encoding': 'UTF8',

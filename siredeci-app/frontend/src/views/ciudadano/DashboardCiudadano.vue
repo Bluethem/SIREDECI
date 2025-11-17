@@ -95,14 +95,17 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import authService from '@/services/auth'
 
 const router = useRouter()
-const nombreCiudadano = ref('Juan Pérez')
+const nombreCiudadano = ref('Ciudadano')
 
 onMounted(() => {
-  // TODO: Obtener el nombre del ciudadano del localStorage o API
-  // const user = JSON.parse(localStorage.getItem('user'))
-  // nombreCiudadano.value = user.nombre + ' ' + user.apellido
+  // Obtener el nombre del ciudadano del localStorage
+  const user = authService.getCurrentUser()
+  if (user && user.nombre) {
+    nombreCiudadano.value = `${user.nombre} ${user.apellido || ''}`
+  }
 })
 
 const goToMisDenuncias = () => {
@@ -110,7 +113,6 @@ const goToMisDenuncias = () => {
 }
 
 const goToNuevaDenuncia = () => {
-  // TODO: Implementar ruta de nueva denuncia
   router.push({ name: 'ciudadano-registrar-denuncia' })
 }
 
@@ -123,9 +125,7 @@ const goToConsultaPublica = () => {
 }
 
 const handleLogout = () => {
-  // TODO: Limpiar localStorage y redirigir
-  // localStorage.removeItem('token')
-  // localStorage.removeItem('user')
+  authService.logout()
   router.push({ name: 'ciudadano-login' })
 }
 </script>

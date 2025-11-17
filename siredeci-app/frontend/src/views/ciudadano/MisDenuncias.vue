@@ -6,7 +6,7 @@
     <!-- Main Content -->
     <main class="py-4 sm:py-6">
       <!-- Page Header -->
-      <div class="mb-8 px-4 sm:px-6">
+      <div class="mb-6 px-4 sm:px-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 class="text-3xl font-black text-gray-900 dark:text-white mb-1">
@@ -36,7 +36,7 @@
       </div>
 
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 px-4 sm:px-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 px-4 sm:px-6">
         <div class="bg-white dark:bg-[#131b1f] dark:border dark:border-slate-800 shadow-lg rounded-xl p-4">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -75,7 +75,7 @@
       </div>
 
       <!-- Filters -->
-      <div class="bg-white dark:bg-[#131b1f] dark:border dark:border-slate-800 shadow-lg rounded-xl p-4 mb-6 mx-4 sm:mx-6">
+      <div class="bg-white dark:bg-[#131b1f] dark:border dark:border-slate-800 shadow-lg rounded-xl p-4 mb-4 mx-4 sm:mx-6">
         <div class="flex flex-col md:flex-row gap-4">
           <div class="flex-1">
             <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Buscar</label>
@@ -132,7 +132,7 @@
                     {{ denuncia.titulo }}
                   </h3>
                   <p class="text-sm text-gray-500 dark:text-gray-500">
-                    {{ denuncia.codigo }} • {{ formatFecha(denuncia.fecha_registro) }}
+                    {{ denuncia.codigo }} • {{ denuncia.fecha }}
                   </p>
                 </div>
               </div>
@@ -183,6 +183,40 @@
         </div>
       </div>
 
+      <!-- Not Authenticated State -->
+      <div v-else-if="noAutenticado" class="max-w-lg mx-auto px-4 sm:px-6">
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-300 dark:border-blue-700 rounded-2xl p-8 text-center">
+          <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-900/50 mb-6">
+            <span class="material-symbols-outlined text-5xl text-blue-600 dark:text-blue-400">lock</span>
+          </div>
+          
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+            Sesión no iniciada
+          </h3>
+          
+          <p class="text-gray-700 dark:text-gray-300 mb-6">
+            Para ver tus denuncias, necesitas iniciar sesión con tu DNI y fecha de emisión.
+          </p>
+          
+          <div class="flex flex-col gap-3">
+            <button
+              @click="router.push({ name: 'ciudadano-login' })"
+              class="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 transition-colors"
+            >
+              <span class="material-symbols-outlined">login</span>
+              <span>Iniciar Sesión</span>
+            </button>
+            <button
+              @click="goToDashboard"
+              class="flex items-center justify-center gap-2 px-6 py-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <span class="material-symbols-outlined">home</span>
+              <span>Volver al Inicio</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      
       <!-- Empty State -->
       <div v-else class="text-center py-12">
         <span class="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-600 mb-4">inbox</span>
@@ -196,51 +230,119 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import NavbarCiudadano from '@/components/NavbarCiudadano.vue'
+import denunciasService from '@/services/denuncias'
+import authService from '@/services/auth'
 
 const router = useRouter()
 const loading = ref(true)
 const searchQuery = ref('')
 const filtroEstado = ref('')
+const denuncias = ref([])
+const error = ref(null)
+const noAutenticado = ref(false)
 
-// Datos de ejemplo (reemplazar con llamadas al API)
-const denuncias = ref([
-  {
-    id: 1,
-    codigo: 'DEN-2025-00001',
-    titulo: 'Bache en Av. Principal',
-    descripcion: 'Hay un bache grande en la Av. Principal esquina con Jr. Lima que causa problemas a los vehículos',
-    estado: 'En proceso',
-    prioridad: 'Media',
-    categoria: 'Infraestructura Vial',
-    distrito: 'Miraflores',
-    fecha_registro: '2025-01-10T14:30:00'
-  },
-  {
-    id: 2,
-    codigo: 'DEN-2025-00002',
-    titulo: 'Luminaria sin funcionar',
-    descripcion: 'La luminaria de la esquina de Av. Arequipa con Jr. Colón no funciona desde hace una semana',
-    estado: 'Resuelta',
-    prioridad: 'Alta',
-    categoria: 'Alumbrado Público',
-    distrito: 'Miraflores',
-    fecha_registro: '2025-01-08T10:15:00'
-  },
-  {
-    id: 3,
-    codigo: 'DEN-2025-00003',
-    titulo: 'Acumulación de basura',
-    descripcion: 'Hay basura acumulada en el parque Kennedy que no ha sido recogida',
-    estado: 'En revisión',
-    prioridad: 'Baja',
-    categoria: 'Limpieza y Residuos',
-    distrito: 'Miraflores',
-    fecha_registro: '2025-01-12T16:45:00'
+// Función helper para obtener colores según estado
+const getEstadoColor = (estado) => {
+  const colores = {
+    'Registrado': { text: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-800' },
+    'En revisión': { text: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/30' },
+    'Asignado': { text: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30' },
+    'En proceso': { text: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
+    'Resuelta': { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' },
+    'Rechazada': { text: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30' },
+    'Cerrada': { text: 'text-gray-500 dark:text-gray-500', bg: 'bg-gray-100 dark:bg-gray-800' }
   }
-])
+  return colores[estado] || colores['Registrado']
+}
+
+// Función helper para obtener colores según prioridad
+const getPrioridadColor = (prioridad) => {
+  const colores = {
+    'Baja': { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' },
+    'Media': { text: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/30' },
+    'Alta': { text: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30' },
+    'Urgente': { text: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30' }
+  }
+  return colores[prioridad] || colores['Media']
+}
+
+// Cargar denuncias desde el backend
+const cargarDenuncias = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    
+    const response = await denunciasService.getMisDenuncias()
+    
+    // Transformar datos para agregar colores
+    denuncias.value = response.map(denuncia => {
+      // Formatear fecha de manera segura
+      let fechaFormateada = 'Sin fecha'
+      if (denuncia.fecha_registro) {
+        try {
+          const fecha = new Date(denuncia.fecha_registro)
+          if (!isNaN(fecha.getTime())) {
+            fechaFormateada = fecha.toLocaleDateString('es-PE', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit'
+            })
+          }
+        } catch (e) {
+          console.warn('Error formateando fecha:', e)
+        }
+      }
+      
+      return {
+        id: denuncia.id_denuncia,
+        codigo: denuncia.codigo_denuncia,
+        titulo: denuncia.titulo,
+        categoria: denuncia.categoria_nombre || 'Sin categoría',
+        estado: denuncia.estado,
+        prioridad: denuncia.prioridad,
+        fecha: fechaFormateada,
+        ubicacion: `${denuncia.direccion || ''}, ${denuncia.distrito || ''}`.trim() || 'Sin ubicación',
+        ...getEstadoColor(denuncia.estado),
+        ...{ prioridadColor: getPrioridadColor(denuncia.prioridad).text },
+        ...{ prioridadBg: getPrioridadColor(denuncia.prioridad).bg }
+      }
+    })
+    
+    console.log('Denuncias cargadas:', denuncias.value)
+  } catch (err) {
+    console.error('Error al cargar denuncias:', err)
+    error.value = err.response?.data?.error || 'Error al cargar las denuncias'
+    
+    // Si el error es de autenticación, verificar si hay sesión
+    if (err.response?.status === 401 || err.response?.status === 404) {
+      if (!authService.isAuthenticated()) {
+        // No hay sesión, mostrar pantalla de no autenticado
+        noAutenticado.value = true
+        console.warn('⚠️ No hay sesión activa.')
+      } else {
+        // Hay datos pero son inválidos, redirigir al login
+        console.warn('⚠️ Sesión inválida, redirigiendo al login...')
+        authService.logout()
+        router.push({ name: 'ciudadano-login' })
+      }
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(async () => {
+  await cargarDenuncias()
+})
+
+// Recargar denuncias cuando se activa la vista (ej: después de crear una denuncia)
+onActivated(async () => {
+  console.log('✅ Vista MisDenuncias activada - Recargando denuncias...')
+  await cargarDenuncias()
+})
 
 const denunciasFiltradas = computed(() => {
   return denuncias.value.filter(d => {
@@ -260,17 +362,6 @@ const denunciasResueltas = computed(() => {
 
 const denunciasPendientes = computed(() => {
   return denuncias.value.filter(d => d.estado !== 'Resuelta' && d.estado !== 'Rechazada').length
-})
-
-onMounted(async () => {
-  // TODO: Cargar denuncias del ciudadano desde el API
-  // const response = await getDenunciasCiudadano()
-  // denuncias.value = response.data
-  
-  // Simulación de carga
-  setTimeout(() => {
-    loading.value = false
-  }, 1000)
 })
 
 const getEstadoClass = (estado) => {

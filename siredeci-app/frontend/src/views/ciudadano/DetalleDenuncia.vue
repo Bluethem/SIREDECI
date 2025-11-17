@@ -7,14 +7,36 @@
     <main class="py-4 sm:py-6">
       <div class="flex flex-col w-full gap-6">
         
-        <!-- Breadcrumbs -->
-        <div class="flex flex-wrap gap-2 text-sm text-gray-500 dark:text-gray-400 px-4 sm:px-6">
-          <router-link to="/ciudadano/dashboard" class="hover:text-primary">Inicio</router-link>
-          <span>/</span>
-          <router-link to="/ciudadano/mis-denuncias" class="hover:text-primary">Mis Denuncias</router-link>
-          <span>/</span>
-          <span class="text-gray-800 dark:text-gray-200 font-medium">{{ denuncia.codigo }}</span>
+        <!-- Loading -->
+        <div v-if="loading" class="flex items-center justify-center py-12">
+          <div class="text-center">
+            <span class="material-symbols-outlined text-5xl text-primary animate-spin mb-4">progress_activity</span>
+            <p class="text-gray-600 dark:text-gray-400">Cargando denuncia...</p>
+          </div>
         </div>
+
+        <!-- Error -->
+        <div v-else-if="error" class="bg-red-50 dark:bg-red-900/20 rounded-lg p-6 mx-4 sm:mx-6">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="material-symbols-outlined text-red-600 dark:text-red-400">error</span>
+            <h3 class="text-lg font-bold text-red-900 dark:text-red-300">Error al cargar la denuncia</h3>
+          </div>
+          <p class="text-red-600 dark:text-red-400 mb-4">{{ error }}</p>
+          <button @click="goBack" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+            Volver a Mis Denuncias
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div v-else>
+          <!-- Breadcrumbs -->
+          <div class="flex flex-wrap gap-2 text-sm text-gray-500 dark:text-gray-400 px-4 sm:px-6">
+            <router-link to="/ciudadano/dashboard" class="hover:text-primary">Inicio</router-link>
+            <span>/</span>
+            <router-link to="/ciudadano/mis-denuncias" class="hover:text-primary">Mis Denuncias</router-link>
+            <span>/</span>
+            <span class="text-gray-800 dark:text-gray-200 font-medium">{{ denuncia.codigo }}</span>
+          </div>
 
         <!-- Main Card -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 sm:p-8 mx-4 sm:mx-6">
@@ -198,6 +220,8 @@
             <span>Descargar Comprobante</span>
           </button>
         </div>
+        </div>
+        <!-- End Content v-else -->
 
       </div>
     </main>
@@ -208,6 +232,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import NavbarCiudadano from '@/components/NavbarCiudadano.vue'
+import denunciasService from '@/services/denuncias'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -232,65 +257,87 @@ let map = null
 const rating = ref(0)
 const hoverRating = ref(0)
 const comentario = ref('')
+const loading = ref(true)
+const error = ref(null)
 
-// Datos de ejemplo de la denuncia (en producción vendría del API)
+// Datos de la denuncia (se cargan desde el API)
 const denuncia = ref({
-  id: 1,
-  codigo: 'DEN-2025-00001',
-  numeroSeguimiento: 'TRK-9876543210',
-  titulo: 'Poste de luz sin funcionar',
-  descripcion: 'El poste de luz ubicado en la esquina de Calle Principal con Avenida Secundaria ha dejado de funcionar desde hace una semana. La zona queda completamente a oscuras por la noche, lo que representa un riesgo para la seguridad de los vecinos que transitan por el área.',
-  estado: 'Resuelta',
-  prioridad: 'Media',
-  categoria: 'Alumbrado Público',
-  distrito: 'Miraflores',
-  fechaRegistro: '2025-01-08T10:15:00',
-  fechaResolucion: '2025-01-15T14:30:00',
-  direccion: 'Av. Principal 456, esquina con Jr. Lima',
-  referencia: 'Frente al parque central',
+  id: null,
+  codigo: '',
+  numeroSeguimiento: '',
+  titulo: '',
+  descripcion: '',
+  estado: '',
+  prioridad: '',
+  categoria: '',
+  distrito: '',
+  fechaRegistro: '',
+  fechaResolucion: null,
+  direccion: '',
+  referencia: '',
   ubicacion: {
     latitud: -12.0464,
     longitud: -77.0428
   },
-  evidencias: [
-    'https://images.unsplash.com/photo-1621363604215-e6dc0e6f2cc8?w=400',
-    'https://images.unsplash.com/photo-1518707999770-ec0c2b34f50f?w=400',
-    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400'
-  ],
-  historial: [
-    {
-      fecha: '2025-01-15T14:30:00',
-      titulo: 'Denuncia Resuelta',
-      descripcion: 'El equipo de mantenimiento reemplazó el foco y el poste ya se encuentra operativo.',
-      icon: 'check',
-      color: 'bg-green-500'
-    },
-    {
-      fecha: '2025-01-10T09:00:00',
-      titulo: 'Asignado a Equipo de Obras',
-      descripcion: 'La denuncia ha sido asignada al equipo de alumbrado público para su revisión en terreno.',
-      icon: 'construction',
-      color: 'bg-primary'
-    },
-    {
-      fecha: '2025-01-08T10:15:00',
-      titulo: 'Denuncia Registrada',
-      descripcion: 'Se ha recibido y registrado la denuncia en el sistema.',
-      icon: 'hourglass_top',
-      color: 'bg-yellow-500'
-    }
-  ],
-  calificacion: null // Si ya fue calificada: { estrellas: 4, comentario: 'Buen servicio' }
+  evidencias: [],
+  historial: [],
+  calificacion: null
 })
 
-onMounted(() => {
-  // TODO: Cargar denuncia desde el API usando el ID de la ruta
-  // const id = route.params.id
-  // const response = await getDenunciaById(id)
-  // denuncia.value = response.data
-  
-  // Inicializar mapa después de que el DOM esté listo
-  setTimeout(() => initMap(), 100)
+onMounted(async () => {
+  try {
+    const id = route.params.id
+    if (!id) {
+      error.value = 'No se proporcionó un ID de denuncia'
+      return
+    }
+
+    loading.value = true
+    
+    // Cargar denuncia desde el API
+    const response = await denunciasService.getDenuncia(id)
+    
+    // Mapear respuesta del backend a estructura del componente
+    denuncia.value = {
+      id: response.id_denuncia,
+      codigo: response.codigo_denuncia,
+      numeroSeguimiento: response.numero_seguimiento,
+      titulo: response.titulo,
+      descripcion: response.descripcion,
+      estado: response.estado,
+      prioridad: response.prioridad,
+      categoria: response.categoria?.nombre || 'Sin categoría',
+      distrito: response.ubicacion?.distrito || '',
+      fechaRegistro: response.fecha_registro,
+      fechaResolucion: null, // TODO: Agregar cuando esté en el backend
+      direccion: response.ubicacion?.direccion || '',
+      referencia: response.ubicacion?.referencia || '',
+      ubicacion: {
+        latitud: parseFloat(response.ubicacion?.latitud || -12.0464),
+        longitud: parseFloat(response.ubicacion?.longitud || -77.0428)
+      },
+      evidencias: response.evidencias || [],
+      historial: [
+        {
+          fecha: response.fecha_registro,
+          titulo: 'Denuncia Registrada',
+          descripcion: 'Se ha recibido y registrado la denuncia en el sistema.',
+          icon: 'hourglass_top',
+          color: 'bg-blue-500'
+        }
+      ],
+      calificacion: null
+    }
+    
+    // Inicializar mapa después de cargar datos
+    setTimeout(() => initMap(), 100)
+    
+  } catch (err) {
+    console.error('Error al cargar denuncia:', err)
+    error.value = 'No se pudo cargar la denuncia. Por favor, intente nuevamente.'
+  } finally {
+    loading.value = false
+  }
 })
 
 const initMap = () => {
