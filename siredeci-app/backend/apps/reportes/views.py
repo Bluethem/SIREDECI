@@ -2,11 +2,19 @@ from django.utils import timezone
 from django.db.models import Count, Avg
 from django.db.models.functions import TruncWeek, TruncDate
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
 from apps.denuncias.models import Denuncia, Resolucion, Ubicacion
-from apps.reportes.models import Indicador, RankingDesempeno
+from apps.reportes.models import (
+    Reporte,
+    Estadistica,
+    Indicador,
+    Dashboard,
+    DashboardIndicador,
+    TendenciaGeografica,
+    RankingDesempeno,
+)
 
 
 @api_view(['GET'])
@@ -402,3 +410,240 @@ def ranking_desempeno(request):
         'limit': limit,
         'results': results,
     })
+
+# =============================
+# Endpoints públicos de reportes
+# =============================
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_reportes_list(request):
+    """Listado de reportes públicos (solo es_publico = True)."""
+    qs = Reporte.objects.filter(es_publico=True)
+
+    tipo = request.GET.get('tipo_reporte')
+    if tipo:
+        qs = qs.filter(tipo_reporte=tipo)
+
+    formato = request.GET.get('formato')
+    if formato:
+        qs = qs.filter(formato_exportacion=formato)
+
+    fecha_inicio = request.GET.get('fecha_inicio')
+    if fecha_inicio:
+        qs = qs.filter(fecha_inicio__gte=fecha_inicio)
+
+    fecha_fin = request.GET.get('fecha_fin')
+    if fecha_fin:
+        qs = qs.filter(fecha_fin__lte=fecha_fin)
+
+    data = []
+    for rpt in qs.order_by('-fecha_generacion')[:100]:
+        data.append({
+            'codigo_reporte': rpt.codigo_reporte,
+            'tipo_reporte': rpt.tipo_reporte,
+            'nombre': rpt.nombre,
+            'descripcion': rpt.descripcion,
+            'fecha_generacion': rpt.fecha_generacion.isoformat() if rpt.fecha_generacion else None,
+            'fecha_inicio': rpt.fecha_inicio.isoformat() if rpt.fecha_inicio else None,
+            'fecha_fin': rpt.fecha_fin.isoformat() if rpt.fecha_fin else None,
+            'formato_exportacion': rpt.formato_exportacion,
+        })
+
+    return Response({'results': data})
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_reporte_detail(request, codigo_reporte):
+    """Metadatos de un reporte público específico."""
+    try:
+        rpt = Reporte.objects.get(codigo_reporte=codigo_reporte, es_publico=True)
+    except Reporte.DoesNotExist:
+        return Response({'detail': 'Reporte no encontrado'}, status=404)
+
+    data = {
+        'codigo_reporte': rpt.codigo_reporte,
+        'tipo_reporte': rpt.tipo_reporte,
+        'nombre': rpt.nombre,
+        'descripcion': rpt.descripcion,
+        'fecha_generacion': rpt.fecha_generacion.isoformat() if rpt.fecha_generacion else None,
+        'fecha_inicio': rpt.fecha_inicio.isoformat() if rpt.fecha_inicio else None,
+        'fecha_fin': rpt.fecha_fin.isoformat() if rpt.fecha_fin else None,
+        'formato_exportacion': rpt.formato_exportacion,
+        'es_publico': rpt.es_publico,
+    }
+    return Response(data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_dashboards_list(request):
+    """Listado de dashboards públicos para ciudadanía."""
+    qs = Dashboard.objects.filter(es_publico=True)
+
+    tipo = request.GET.get('tipo_dashboard')
+    if tipo:
+        qs = qs.filter(tipo_dashboard=tipo)
+
+    data = []
+    for db in qs.order_by('orden_visualizacion', 'nombre')[:50]:
+        data.append({
+            'codigo_dashboard': db.codigo_dashboard,
+            'nombre': db.nombre,
+            'descripcion': db.descripcion,
+            'tipo_dashboard': db.tipo_dashboard,
+            'frecuencia_actualizacion': db.frecuencia_actualizacion,
+            'es_publico': db.es_publico,
+        })
+
+    return Response({'results': data})
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_dashboard_detail(request, codigo_dashboard):
+    """Detalle de un dashboard público con sus indicadores asociados."""
+    try:
+        db = Dashboard.objects.get(codigo_dashboard=codigo_dashboard, es_publico=True)
+    except Dashboard.DoesNotExist:
+        return Response({'detail': 'Dashboard no encontrado'}, status=404)
+
+    asignaciones = (
+        DashboardIndicador.objects
+        .filter(id_dashboard=db)
+        .select_related('id_indicador')
+        .order_by('orden')
+    )
+
+    indicadores_data = []
+    for asg in asignaciones:
+        ind = asg.id_indicador
+        indicadores_data.append({
+            'codigo_indicador': ind.codigo_indicador,
+            'nombre': ind.nombre,
+            'descripcion': ind.descripcion,
+            'tipo_visualizacion': ind.tipo_visualizacion,
+            'frecuencia_actualizacion': ind.frecuencia_actualizacion,
+            'valor_minimo': float(ind.valor_minimo) if ind.valor_minimo is not None else None,
+            'valor_maximo': float(ind.valor_maximo) if ind.valor_maximo is not None else None,
+            'valor_actual': float(ind.valor_actual) if ind.valor_actual is not None else None,
+            'orden': asg.orden,
+        })
+
+    data = {
+        'codigo_dashboard': db.codigo_dashboard,
+        'nombre': db.nombre,
+        'descripcion': db.descripcion,
+        'tipo_dashboard': db.tipo_dashboard,
+        'frecuencia_actualizacion': db.frecuencia_actualizacion,
+        'es_publico': db.es_publico,
+        'indicadores': indicadores_data,
+    }
+    return Response(data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_indicador_detail(request, codigo_indicador):
+    """Detalle público de un indicador (definición + valor_actual)."""
+    try:
+        ind = Indicador.objects.get(codigo_indicador=codigo_indicador)
+    except Indicador.DoesNotExist:
+        return Response({'detail': 'Indicador no encontrado'}, status=404)
+
+    data = {
+        'codigo_indicador': ind.codigo_indicador,
+        'nombre': ind.nombre,
+        'descripcion': ind.descripcion,
+        'formula': ind.formula,
+        'tipo_visualizacion': ind.tipo_visualizacion,
+        'frecuencia_actualizacion': ind.frecuencia_actualizacion,
+        'valor_minimo': float(ind.valor_minimo) if ind.valor_minimo is not None else None,
+        'valor_maximo': float(ind.valor_maximo) if ind.valor_maximo is not None else None,
+        'valor_actual': float(ind.valor_actual) if ind.valor_actual is not None else None,
+    }
+    return Response(data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_indicador_serie(request, codigo_indicador):
+    """Serie temporal de un indicador a partir de la tabla Estadistica."""
+    periodo = request.GET.get('periodo')
+    qs = Estadistica.objects.filter(tipo_metrica=codigo_indicador)
+    if periodo:
+        qs = qs.filter(periodo=periodo)
+
+    qs = qs.order_by('fecha_calculo')
+    series = []
+    for est in qs[:365]:
+        series.append({
+            'codigo_estadistica': est.codigo_estadistica,
+            'valor': float(est.valor),
+            'unidad_medida': est.unidad_medida,
+            'periodo': est.periodo,
+            'fecha_calculo': est.fecha_calculo.isoformat() if est.fecha_calculo else None,
+            'categoria': est.categoria,
+            'area': est.area,
+            'zona': est.zona,
+        })
+
+    return Response({'results': series})
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_tendencias_geograficas(request):
+    """Listado público de tendencias geográficas agregadas."""
+    qs = TendenciaGeografica.objects.all()
+
+    periodo = request.GET.get('periodo_analisis')
+    if periodo:
+        qs = qs.filter(periodo_analisis=periodo)
+
+    nivel = request.GET.get('nivel_criticidad')
+    if nivel:
+        qs = qs.filter(nivel_criticidad=nivel)
+
+    distrito = request.GET.get('distrito')
+    if distrito:
+        qs = qs.filter(distrito=distrito)
+
+    data = []
+    for t in qs.order_by('-cantidad_denuncias')[:200]:
+        data.append({
+            'codigo_tendencia': t.codigo_tendencia,
+            'zona': t.zona,
+            'distrito': t.distrito,
+            'cantidad_denuncias': t.cantidad_denuncias,
+            'categoria_mas_frecuente': t.categoria_mas_frecuente,
+            'tasa_resolucion': float(t.tasa_resolucion),
+            'tiempo_promedio_atencion': float(t.tiempo_promedio_atencion),
+            'periodo_analisis': t.periodo_analisis,
+            'nivel_criticidad': t.nivel_criticidad,
+        })
+
+    return Response({'results': data})
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_ranking_areas(request):
+    """Ranking público de desempeño por área responsable."""
+    qs = RankingDesempeno.objects.select_related('id_area_responsable')
+
+    periodo = request.GET.get('periodo_evaluacion')
+    if periodo:
+        qs = qs.filter(periodo_evaluacion=periodo)
+
+    qs = qs.order_by('posicion')
+
+    results = []
+    for r in qs[:100]:
+        results.append({
+            'codigo_ranking': r.codigo_ranking,
+            'periodo_evaluacion': r.periodo_evaluacion,
+            'posicion': r.posicion,
+            'area': getattr(r.id_area_responsable, 'nombre', 'Área'),
+            'puntaje_total': float(r.puntaje_total),
+            'denuncias_atendidas': r.denuncias_atendidas,
+            'tasa_resolucion_area': float(r.tasa_resolucion_area),
+            'tiempo_promedio_area': float(r.tiempo_promedio_area),
+            'calificacion_promedio': float(r.calificacion_promedio) if r.calificacion_promedio is not None else None,
+        })
+
+    return Response({'results': results})

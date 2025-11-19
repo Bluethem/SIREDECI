@@ -94,6 +94,11 @@ const routes = [
     path: '/public/estadisticas',
     name: 'estadisticas-publicas',
     component: () => import('../views/public/EstadisticasPublicas.vue')
+  },
+  {
+    path: '/public/reportes',
+    name: 'reportes-publicos',
+    component: () => import('../views/public/ReportesPublicos.vue')
   }
 ]
 
