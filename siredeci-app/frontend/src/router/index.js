@@ -56,6 +56,31 @@ const routes = [
     component: () => import('../views/admin/VistaPreviaReportes.vue')
   },
   {
+    path: '/municipal/dashboard',
+    name: 'municipal-dashboard',
+    component: () => import('../views/personal_municipal/DashboardArea.vue')
+  },
+  {
+    path: '/municipal/mi-area',
+    name: 'municipal-mi-area',
+    component: () => import('../views/personal_municipal/MiAreaAsignadas.vue')
+  },
+  {
+    path: '/municipal/mi-area/:id',
+    name: 'municipal-detalle-asignada',
+    component: () => import('../views/personal_municipal/DetalleDenunciaAsignada.vue')
+  },
+  {
+    path: '/municipal/pendientes-asignar',
+    name: 'municipal-pendientes-asignar',
+    component: () => import('../views/personal_municipal/PendientesAsignar.vue')
+  },
+  {
+    path: '/municipal/duplicadas',
+    name: 'municipal-duplicadas-vinculadas',
+    component: () => import('../views/personal_municipal/DuplicadasVinculadas.vue')
+  },
+  {
     path: '/ciudadano/login',
     name: 'ciudadano-login',
     component: () => import('../views/ciudadano/LoginCiudadano.vue')
