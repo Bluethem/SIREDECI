@@ -1,8 +1,11 @@
 from django.utils import timezone
 from django.db.models import Count, Avg
 from django.db.models.functions import TruncWeek, TruncDate
+from datetime import datetime, time as time_cls
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
+
+from apps.usuarios.permissions import IsStaffLike
 from rest_framework.response import Response
 
 from apps.denuncias.models import Denuncia, Resolucion, Ubicacion
@@ -17,28 +20,80 @@ from apps.reportes.models import (
 )
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def dashboard_summary(request):
-    """
-    Resumen para el dashboard ejecutivo de admin.
-    Devuelve totales y métricas básicas para tarjetas y barras.
-    """
-    # Totales
-    total_denuncias = Denuncia.objects.count()
+def _get_date_range_from_request(request):
+    """Devuelve (start, end) en base al parámetro 'range'.
 
-    # Denuncias hoy (por fecha_registro)
+    Soporta:
+    - day, week, month, year (como antes)
+    - custom: usa parámetros GET 'from' y 'to' (YYYY-MM-DD)
+    """
+    r = (request.GET.get('range') or '').lower()
+    now = timezone.now()
+
+    if r == 'custom':
+        from_str = request.GET.get('from')
+        to_str = request.GET.get('to')
+        try:
+            if from_str and to_str:
+                from_date = datetime.strptime(from_str, '%Y-%m-%d').date()
+                to_date = datetime.strptime(to_str, '%Y-%m-%d').date()
+                start_dt = datetime.combine(from_date, time_cls.min)
+                end_dt = datetime.combine(to_date, time_cls.max)
+                start = timezone.make_aware(start_dt) if timezone.is_naive(start_dt) else start_dt
+                end = timezone.make_aware(end_dt) if timezone.is_naive(end_dt) else end_dt
+                return start, end
+        except Exception:
+            # si hay error en el parseo, caemos al comportamiento por defecto
+            pass
+
+    if r == 'day':
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif r == 'week':
+        start = now - timezone.timedelta(days=7)
+    elif r == 'month':
+        start = now - timezone.timedelta(days=30)
+    elif r == 'year':
+        start = now - timezone.timedelta(days=365)
+    else:
+        # por defecto últimos 30 días
+        start = now - timezone.timedelta(days=30)
+    return start, now
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsStaffLike])
+def dashboard_summary(request):
+    """Resumen para el dashboard ejecutivo de admin.
+
+    Devuelve:
+    - total_denuncias
+    - avg_tiempo_atencion_horas (promedio de tiempo_total_horas en Resolucion)
+    - tasa_resolucion (% de denuncias en estado 'Resuelta')
+    - avg_satisfaccion (promedio de calificacion_ciudadano)
+    - estados (conteo por estado de Denuncia)
+    - hoy (denuncias de hoy y pendientes de validación)
+    """
+
+    # Rango de fechas para el análisis principal
+    start, end = _get_date_range_from_request(request)
+
+    base_qs = Denuncia.objects.filter(fecha_registro__range=(start, end))
+
+    # Totales generales de denuncias en el rango
+    total_denuncias = base_qs.count()
+
+    # Denuncias hoy (por fecha_registro, independiente del rango)
     today = timezone.now().date()
     denuncias_hoy = Denuncia.objects.filter(fecha_registro__date=today).count()
 
-    # Pendientes de validación
+    # Pendientes de validación (independiente del rango)
     pendientes_validacion = Denuncia.objects.filter(requiere_validacion=True).count()
 
-    # Distribución por estado - simplificado
+    # Distribución por estado
     estados_counts = {}
     try:
         estados_qs = (
-            Denuncia.objects.values('estado')
+            base_qs.values('estado')
             .annotate(count=Count('id_denuncia'))
         )
         estados_counts = {row['estado']: row['count'] for row in estados_qs}
@@ -46,8 +101,21 @@ def dashboard_summary(request):
         print(f"Error en estados_qs: {e}")
         estados_counts = {}
 
+    # Métricas de resolución (tabla Resolucion)
+    avg_tiempo = Resolucion.objects.aggregate(avg=Avg('tiempo_total_horas'))['avg'] or 0
+    avg_satisf = Resolucion.objects.aggregate(avg=Avg('calificacion_ciudadano'))['avg'] or 0
+
+    # Tasa de resolución: denuncias en estado 'Resuelta' sobre total en el rango
+    resueltas = base_qs.filter(estado='Resuelta').count()
+    tasa_resolucion = 0.0
+    if total_denuncias > 0:
+        tasa_resolucion = round(resueltas * 100.0 / total_denuncias, 2)
+
     data = {
-        'total': total_denuncias,
+        'total_denuncias': total_denuncias,
+        'avg_tiempo_atencion_horas': float(avg_tiempo),
+        'tasa_resolucion': float(tasa_resolucion),
+        'avg_satisfaccion': float(avg_satisf),
         'hoy': {
             'denuncias_hoy': denuncias_hoy,
             'pendientes_validacion': pendientes_validacion,
@@ -59,17 +127,20 @@ def dashboard_summary(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsStaffLike])
 def dashboard_categorias(request):
     """
     Distribución de denuncias por categoría (top 6)
     """
+    start, end = _get_date_range_from_request(request)
+
     qs = (
-        Denuncia.objects.values('id_categoria__nombre')
+        Denuncia.objects.filter(fecha_registro__range=(start, end))
+        .values('id_categoria__nombre')
         .annotate(count=Count('id_denuncia'))
         .order_by('-count')[:6]
     )
-    total = Denuncia.objects.count() or 1
+    total = Denuncia.objects.filter(fecha_registro__range=(start, end)).count() or 1
     items = []
     for row in qs:
         nombre = row['id_categoria__nombre'] or 'Sin categoría'
@@ -80,59 +151,138 @@ def dashboard_categorias(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsStaffLike])
 def dashboard_temporal(request):
-    """
-    Serie temporal semanal (últimas 4 semanas): registradas vs resueltas
+    """Serie temporal de denuncias registradas vs resueltas.
+
+    Param:
+      - granularity: 'day' | 'week' | 'month' (default 'week')
     """
     now = timezone.now()
-    start = now - timezone.timedelta(weeks=4)
-    # Registradas por semana
-    reg = (
-        Denuncia.objects.filter(fecha_registro__gte=start)
-        .annotate(week=TruncWeek('fecha_registro'))
-        .values('week')
-        .annotate(count=Count('id_denuncia'))
-        .order_by('week')
-    )
-    # Resueltas por semana (por fecha_resolucion)
-    res = (
-        Resolucion.objects.filter(fecha_resolucion__gte=start)
-        .annotate(week=TruncWeek('fecha_resolucion'))
-        .values('week')
-        .annotate(count=Count('id_resolucion'))
-        .order_by('week')
-    )
-    # Normalizar a 4 semanas
-    weeks = []
-    for i in range(4, 0, -1):
-        wk_start = (now - timezone.timedelta(weeks=i)).date()
-        weeks.append(wk_start.isocalendar())  # (year, week, weekday)
+    gran = (request.GET.get('granularity') or 'week').lower()
+
+    # rango base: reusamos helper pero aseguramos una ventana mínima razonable
+    start, _ = _get_date_range_from_request(request)
+    if gran == 'day':
+        min_start = now - timezone.timedelta(days=7)
+    elif gran == 'month':
+        min_start = now - timezone.timedelta(days=365)
+    else:  # week
+        min_start = now - timezone.timedelta(weeks=4)
+    if start > min_start:
+        start = min_start
+
+    # Seleccionar función de truncado y construcción de key/label
+    def build_qs_denuncia(field_name):
+        if gran == 'day':
+            return (
+                Denuncia.objects.filter(fecha_registro__gte=start)
+                .annotate(bucket=TruncDate(field_name))
+                .values('bucket')
+                .annotate(count=Count('id_denuncia'))
+                .order_by('bucket')
+            )
+        elif gran == 'month':
+            return (
+                Denuncia.objects.filter(fecha_registro__gte=start)
+                .annotate(bucket=TruncDate(field_name))
+                .values('bucket__year', 'bucket__month')
+                .annotate(count=Count('id_denuncia'))
+                .order_by('bucket__year', 'bucket__month')
+            )
+        else:  # week
+            return (
+                Denuncia.objects.filter(fecha_registro__gte=start)
+                .annotate(bucket=TruncWeek(field_name))
+                .values('bucket')
+                .annotate(count=Count('id_denuncia'))
+                .order_by('bucket')
+            )
+
+    def build_qs_resolucion(field_name):
+        if gran == 'day':
+            return (
+                Resolucion.objects.filter(fecha_resolucion__gte=start)
+                .annotate(bucket=TruncDate(field_name))
+                .values('bucket')
+                .annotate(count=Count('id_resolucion'))
+                .order_by('bucket')
+            )
+        elif gran == 'month':
+            return (
+                Resolucion.objects.filter(fecha_resolucion__gte=start)
+                .annotate(bucket=TruncDate(field_name))
+                .values('bucket__year', 'bucket__month')
+                .annotate(count=Count('id_resolucion'))
+                .order_by('bucket__year', 'bucket__month')
+            )
+        else:
+            return (
+                Resolucion.objects.filter(fecha_resolucion__gte=start)
+                .annotate(bucket=TruncWeek(field_name))
+                .values('bucket')
+                .annotate(count=Count('id_resolucion'))
+                .order_by('bucket')
+            )
+
+    reg = build_qs_denuncia('fecha_registro')
+    res = build_qs_resolucion('fecha_resolucion')
+
+    def to_key_and_label(row):
+        if gran == 'day':
+            d = row['bucket']
+            if not d:
+                return None, None
+            label = d.strftime('%d/%m')
+            key = d.isoformat()
+            return key, label
+        elif gran == 'month':
+            y = row.get('bucket__year')
+            m = row.get('bucket__month')
+            if not (y and m):
+                return None, None
+            key = f"{y}-{m:02d}"
+            label = f"{m:02d}/{y}"
+            return key, label
+        else:  # week
+            d = row['bucket']
+            if not d:
+                return None, None
+            y, w, _ = d.date().isocalendar()
+            key = f"{y}-W{w}"
+            label = f"Sem {w}"
+            return key, label
+
     def to_map(qs):
         m = {}
+        labels = {}
         for row in qs:
-            wk = row['week'].date().isocalendar() if row['week'] else None
-            if wk:
-                key = f"{wk[0]}-W{wk[1]}"
-                m[key] = row['count']
-        return m
-    reg_map = to_map(reg)
-    res_map = to_map(res)
+            key, label = to_key_and_label(row)
+            if not key:
+                continue
+            m[key] = row['count']
+            labels[key] = label
+        return m, labels
+
+    reg_map, reg_labels = to_map(reg)
+    res_map, res_labels = to_map(res)
+
+    # Unificar claves y ordenar por clave alfabética (que coincide con orden temporal en todos los casos)
+    all_keys = sorted(set(reg_map.keys()) | set(res_map.keys()))
     series = []
-    for i in range(4, 0, -1):
-        wk_date = (now - timezone.timedelta(weeks=i)).date()
-        y, w, _ = wk_date.isocalendar()
-        key = f"{y}-W{w}"
+    for key in all_keys:
+        label = reg_labels.get(key) or res_labels.get(key) or key
         series.append({
-            'label': key,
+            'label': label,
             'registradas': reg_map.get(key, 0),
             'resueltas': res_map.get(key, 0),
         })
+
     return Response({'series': series})
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsStaffLike])
 def dashboard_prioridades(request):
     """
     Conteos por prioridad por semana (últimas 4 semanas) para columnas apiladas
@@ -171,22 +321,26 @@ def dashboard_prioridades(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsStaffLike])
 def dashboard_alerts(request):
     """
     Alertas simples para panel derecho.
     """
     try:
-        # Urgentes sin asignar
-        urgentes_sin_asignar = Denuncia.objects.filter(
+        start, end = _get_date_range_from_request(request)
+
+        base_qs = Denuncia.objects.filter(fecha_registro__range=(start, end))
+
+        # Urgentes sin asignar en el rango
+        urgentes_sin_asignar = base_qs.filter(
             prioridad='Urgente'
         ).exclude(
             estado__in=['Asignado', 'En proceso', 'Resuelta', 'Cerrada']
         ).count()
 
-        # Próximas a vencer (24h)
+        # Próximas a vencer (24h) dentro del rango
         hace_24h = timezone.now() - timezone.timedelta(hours=24)
-        proximas_vencer = Denuncia.objects.filter(
+        proximas_vencer = base_qs.filter(
             estado='En proceso',
             fecha_registro__lte=hace_24h
         ).count()
@@ -204,7 +358,7 @@ def dashboard_alerts(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsStaffLike])
 def geo_points(request):
     qs = Denuncia.objects.select_related('id_ubicacion', 'id_categoria')
     f_from = request.GET.get('from')
@@ -251,7 +405,7 @@ def geo_points(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsStaffLike])
 def geo_top_zonas(request):
     qs = Denuncia.objects.select_related('id_ubicacion')
     f_from = request.GET.get('from')
@@ -271,7 +425,7 @@ def geo_top_zonas(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsStaffLike])
 def geo_evolucion(request):
     now = timezone.now()
     days = int(request.GET.get('days', '7'))
@@ -301,7 +455,7 @@ def geo_evolucion(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsStaffLike])
 def indicators_list(request):
     """
     Lista de indicadores con filtros básicos.
@@ -372,7 +526,7 @@ def indicators_list(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsStaffLike])
 def ranking_desempeno(request):
     """
     Ranking de desempeño por área responsable.

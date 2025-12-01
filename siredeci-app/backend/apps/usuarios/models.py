@@ -139,6 +139,11 @@ class Usuario(models.Model):
         """Compatibilidad con librerías que esperan un campo `id`."""
         return self.id_usuario
     
+    @property
+    def is_active(self):
+        """Compatibilidad con DRF y SimpleJWT: considera activo si estado_cuenta es 'Activo'."""
+        return self.estado_cuenta == 'Activo'
+    
     def save(self, *args, **kwargs):
         # Auto-generar código de usuario si no existe
         if not self.codigo_usuario:

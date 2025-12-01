@@ -236,24 +236,23 @@ Atentamente,
 Municipalidad - Sistema de Denuncias Ciudadanas', 
 '["nombre_ciudadano", "codigo_denuncia", "numero_seguimiento", "motivo_rechazo", "observaciones"]', TRUE)
 ON CONFLICT (codigo_plantilla) DO NOTHING;
-
 -- ============================================
 -- USUARIOS DEL SISTEMA
 -- ============================================
 
 -- Usuario SuperAdmin (password: Admin123!)
 INSERT INTO Usuario (codigo_usuario, nombre_usuario, password_hash, email, estado_cuenta, requiere_mfa) VALUES
-('USR-00001', 'superadmin', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'superadmin@municipalidad.gob.pe', 'Activo', TRUE)
+('USR-00001', 'superadmin', 'Admin123!', 'superadmin@municipalidad.gob.pe', 'Activo', TRUE)
 ON CONFLICT (codigo_usuario) DO NOTHING;
 
 -- Usuario Administrador (password: Admin123!)
 INSERT INTO Usuario (codigo_usuario, nombre_usuario, password_hash, email, estado_cuenta, requiere_mfa) VALUES
-('USR-00002', 'admin', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'admin@municipalidad.gob.pe', 'Activo', TRUE)
+('USR-00002', 'admin', 'Admin123!', 'admin@municipalidad.gob.pe', 'Activo', TRUE)
 ON CONFLICT (codigo_usuario) DO NOTHING;
 
 -- Usuario Auditor (password: Audit123!)
 INSERT INTO Usuario (codigo_usuario, nombre_usuario, password_hash, email, estado_cuenta, requiere_mfa) VALUES
-('USR-00003', 'auditor', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'auditor@municipalidad.gob.pe', 'Activo', FALSE)
+('USR-00003', 'auditor', 'Audit123!', 'auditor@municipalidad.gob.pe', 'Activo', FALSE)
 ON CONFLICT (codigo_usuario) DO NOTHING;
 
 -- Asignar roles a usuarios administrativos
@@ -271,9 +270,9 @@ ON CONFLICT DO NOTHING;
 
 -- Jefes de Área
 INSERT INTO Usuario (codigo_usuario, nombre_usuario, password_hash, email, estado_cuenta) VALUES
-('USR-00101', 'jperez', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'juan.perez@municipalidad.gob.pe', 'Activo'),
-('USR-00102', 'mgarcia', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'maria.garcia@municipalidad.gob.pe', 'Activo'),
-('USR-00103', 'crodriguez', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'carlos.rodriguez@municipalidad.gob.pe', 'Activo')
+('USR-00101', 'jperez', 'Jefe123!', 'juan.perez@municipalidad.gob.pe', 'Activo'),
+('USR-00102', 'mgarcia', 'Jefe123!', 'maria.garcia@municipalidad.gob.pe', 'Activo'),
+('USR-00103', 'crodriguez', 'Jefe123!', 'carlos.rodriguez@municipalidad.gob.pe', 'Activo')
 ON CONFLICT (codigo_usuario) DO NOTHING;
 
 INSERT INTO PersonalMunicipal (codigo_personal, dni, nombre, apellido, email, cargo, fecha_ingreso, especialidad, id_area_responsable, id_usuario) VALUES
@@ -305,10 +304,10 @@ UPDATE AreaResponsable SET id_jefe_area = (SELECT id_personal FROM PersonalMunic
 
 -- Operadores
 INSERT INTO Usuario (codigo_usuario, nombre_usuario, password_hash, email, estado_cuenta) VALUES
-('USR-00201', 'lmartinez', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'luis.martinez@municipalidad.gob.pe', 'Activo'),
-('USR-00202', 'asanchez', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'ana.sanchez@municipalidad.gob.pe', 'Activo'),
-('USR-00203', 'rfernandez', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'roberto.fernandez@municipalidad.gob.pe', 'Activo'),
-('USR-00204', 'plovato', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'patricia.lovato@municipalidad.gob.pe', 'Activo')
+('USR-00201', 'lmartinez', 'Operador123!', 'luis.martinez@municipalidad.gob.pe', 'Activo'),
+('USR-00202', 'asanchez', 'Operador123!', 'ana.sanchez@municipalidad.gob.pe', 'Activo'),
+('USR-00203', 'rfernandez', 'Operador123!', 'roberto.fernandez@municipalidad.gob.pe', 'Activo'),
+('USR-00204', 'plovato', 'Operador123!', 'patricia.lovato@municipalidad.gob.pe', 'Activo')
 ON CONFLICT (codigo_usuario) DO NOTHING;
 
 INSERT INTO PersonalMunicipal (codigo_personal, dni, nombre, apellido, email, cargo, fecha_ingreso, especialidad, id_area_responsable, id_usuario) VALUES
@@ -351,9 +350,9 @@ ON CONFLICT DO NOTHING;
 -- ============================================
 
 INSERT INTO Usuario (codigo_usuario, nombre_usuario, password_hash, email, estado_cuenta) VALUES
-('USR-10001', 'ciudadano1', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'ciudadano1@email.com', 'Activo'),
-('USR-10002', 'ciudadano2', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'ciudadano2@email.com', 'Activo'),
-('USR-10003', 'ciudadano3', '$2b$10$YQv4R0uY5vG8ZQK4mE1KxOXwX7C9K8xmV5nY2qW3eR4tY5uI6oP7q', 'ciudadano3@email.com', 'Activo')
+('USR-10001', 'ciudadano1', '', 'ciudadano1@email.com', 'Activo'),
+('USR-10002', 'ciudadano2', '', 'ciudadano2@email.com', 'Activo'),
+('USR-10003', 'ciudadano3', '', 'ciudadano3@email.com', 'Activo')
 ON CONFLICT (codigo_usuario) DO NOTHING;
 
 INSERT INTO Ciudadano (codigo_ciudadano, dni, nombre, apellido, email, direccion, fecha_emision_dni, id_usuario) VALUES

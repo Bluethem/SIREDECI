@@ -1,45 +1,6 @@
 <template>
   <div class="font-display bg-background-light dark:bg-background-dark flex min-h-screen w-full text-gray-900 dark:text-white">
-    <!-- Sidebar identical to Dashboard -->
-    <aside class="w-64 bg-white flex flex-col border-r border-medium-gray">
-      <div class="flex flex-col h-full p-4">
-        <div class="flex items-center gap-3 p-2 mb-4">
-          <div
-            class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-            data-alt="Company logo abstract shape"
-            style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBaXtYxFyHwjmkfzelKdSwckui0VVqBxvGCgbtXZGm7PLNonck59Pa-GNBQiIsq87W1Lh6EuZpvNHIl5ut6OMcMKYLyvJY29ahhMDpwOxBZPAlC0GJX4nsu6xBRTYFiYOiIbwJTgSuczE5rPIRwmep9qHnn0FoAzi8SzFgNs7b6pwFoWzm0BP_V813hr6YZomVQerH46whjBHv_QzMR-PdF8ZxV4zElToDiD0RtlSzhnMFiUQtPfDYTQ16z0SxPZYNRrHGjRBMPQV2U");'>
-          </div>
-          <div class="flex flex-col">
-            <h1 class="text-base font-bold text-dark-blue">Plataforma de</h1>
-            <p class="text-sm text-gray-500">Gestión</p>
-          </div>
-        </div>
-        <nav class="flex flex-col gap-2">
-          <a :class="['flex items-center gap-3 px-3 py-2 rounded-lg', isActive('/admin/dashboard') ? 'bg-principal-blue/10 text-principal-blue' : 'text-gray-700 hover:bg-gray-100']" href="#" @click.prevent="$router.push('/admin/dashboard')">
-            <span :class="['material-symbols-outlined nofill', isActive('/admin/dashboard') ? 'text-principal-blue' : '']">dashboard</span>
-            <p class="text-sm font-medium leading-none">Dashboard</p>
-          </a>
-          <a :class="['flex items-center gap-3 px-3 py-2 rounded-lg', isActive('/admin/analisis-geografico') ? 'bg-principal-blue/10 text-principal-blue' : 'text-gray-700 hover:bg-gray-100']" href="#" @click.prevent="$router.push('/admin/analisis-geografico')">
-            <span class="material-symbols-outlined nofill">map</span>
-            <p class="text-sm font-medium">Tendencias geograficas</p>
-          </a>
-          <a :class="['flex items-center gap-3 px-3 py-2 rounded-lg', isActive('/admin/reportes') ? 'bg-principal-blue/10 text-principal-blue' : 'text-gray-700 hover:bg-gray-100']" href="#" @click.prevent="$router.push('/admin/reportes')">
-            <span :class="['material-symbols-outlined nofill', isActive('/admin/reportes') ? 'text-principal-blue' : '']">bar_chart</span>
-            <p class="text-sm font-medium leading-none">Reportes</p>
-          </a>
-          <a :class="['flex items-center gap-3 px-3 py-2 rounded-lg', isActive('/admin/indicadores') ? 'bg-principal-blue/10 text-principal-blue' : 'text-gray-700 hover:bg-gray-100']" href="#" @click.prevent="$router.push('/admin/indicadores')">
-            <span class="material-symbols-outlined nofill">insights</span>
-            <p class="text-sm font-medium">Indicadores</p>
-          </a>
-        </nav>
-        <div class="mt-auto">
-          <a class="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg" href="#">
-            <span class="material-symbols-outlined nofill">help</span>
-            <p class="text-sm font-medium">Ayuda</p>
-          </a>
-        </div>
-      </div>
-    </aside>
+    <SidebarAdmin />
 
     <!-- Main content -->
     <main class="flex-1 flex flex-col p-6 lg:p-8">
@@ -114,76 +75,77 @@
       </div>
 
       <!-- Floating Action Button -->
-      <button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-transform hover:scale-105" title="Crear nuevo indicador">
+      <button
+        v-if="canCreateIndicator"
+        class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-transform hover:scale-105"
+        title="Crear nuevo indicador"
+      >
         <span class="material-symbols-outlined text-3xl">add</span>
       </button>
     </main>
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
-export default {
-  name: 'IndicadoresAdmin',
-  data() {
-    return {
-      loading: false,
-      indicators: [],
-      query: '',
-      type: 'all',
-      freq: 'all',
-    }
-  },
-  computed: {
-    filtered() {
-      // Los datos ya vienen filtrados del backend; retornamos tal cual
-      return this.indicators
-    }
-  },
-  watch: {
-    query() { this.fetchIndicatorsDebounced() },
-    type() { this.fetchIndicators() },
-    freq() { this.fetchIndicators() },
-  },
-  mounted() {
-    const token = localStorage.getItem('access_token')
-    if (token) axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-    this.fetchIndicators()
-  },
-  methods: {
-    fetchIndicatorsDebounced: (() => {
-      let t
-      return function() {
-        clearTimeout(t)
-        t = setTimeout(() => this.fetchIndicators(), 300)
-      }
-    })(),
-    async fetchIndicators() {
-      try {
-        this.loading = true
-        const params = {}
-        if (this.query && this.query.trim()) params.q = this.query.trim()
-        if (this.type && this.type !== 'all') params.type = this.type
-        if (this.freq && this.freq !== 'all') params.freq = this.freq
-        const { data } = await axios.get('/api/reportes/indicators/', { params })
-        this.indicators = data.results || []
-      } catch (e) {
-        console.error('Error cargando indicadores', e)
-        this.indicators = []
-      } finally {
-        this.loading = false
-      }
-    },
-    displayType(t) {
-      return ({ barchart:'BarChart', gauge:'Gauge', number:'Number', piechart:'PieChart', linechart:'LineChart' }[t] || t)
-    },
-    displayFreq(f) {
-      return ({ tiempo_real:'Tiempo real', diaria:'Diaria', semanal:'Semanal', mensual:'Mensual' }[f] || f)
-    },
-    isActive(path) {
-      try { return this.$route.path.startsWith(path) } catch { return false }
-    }
+import SidebarAdmin from '@/components/SidebarAdmin.vue'
+import { isSuperAdmin, isAdmin } from '@/utils/roles'
+
+const loading = ref(false)
+const indicators = ref([])
+const query = ref('')
+const type = ref('all')
+const freq = ref('all')
+
+const filtered = computed(() => {
+  // Los datos ya vienen filtrados del backend; retornamos tal cual
+  return indicators.value
+})
+
+const canCreateIndicator = computed(() => isSuperAdmin() || isAdmin())
+
+watch(query, () => fetchIndicatorsDebounced())
+watch(type, () => fetchIndicators())
+watch(freq, () => fetchIndicators())
+
+onMounted(() => {
+  const token = localStorage.getItem('access_token')
+  if (token) axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  fetchIndicators()
+})
+
+const fetchIndicatorsDebounced = (() => {
+  let t
+  return function() {
+    clearTimeout(t)
+    t = setTimeout(() => fetchIndicators(), 300)
   }
+})()
+
+async function fetchIndicators() {
+  try {
+    loading.value = true
+    const params = {}
+    if (query.value && query.value.trim()) params.q = query.value.trim()
+    if (type.value && type.value !== 'all') params.type = type.value
+    if (freq.value && freq.value !== 'all') params.freq = freq.value
+    const { data } = await axios.get('/api/reportes/indicators/', { params })
+    indicators.value = data.results || []
+  } catch (e) {
+    console.error('Error cargando indicadores', e)
+    indicators.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+function displayType(t) {
+  return ({ barchart:'BarChart', gauge:'Gauge', number:'Number', piechart:'PieChart', linechart:'LineChart' }[t] || t)
+}
+
+function displayFreq(f) {
+  return ({ tiempo_real:'Tiempo real', diaria:'Diaria', semanal:'Semanal', mensual:'Mensual' }[f] || f)
 }
 </script>
 

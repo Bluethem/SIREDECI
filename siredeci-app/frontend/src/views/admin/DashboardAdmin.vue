@@ -1,49 +1,6 @@
 <template>
   <div class="font-display bg-very-light-gray text-gray-800 flex h-screen">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-white flex flex-col border-r border-medium-gray">
-      <div class="flex flex-col h-full p-4">
-        <div class="flex items-center gap-3 p-2 mb-4">
-          <div
-            class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-            data-alt="Company logo abstract shape"
-            style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBaXtYxFyHwjmkfzelKdSwckui0VVqBxvGCgbtXZGm7PLNonck59Pa-GNBQiIsq87W1Lh6EuZpvNHIl5ut6OMcMKYLyvJY29ahhMDpwOxBZPAlC0GJX4nsu6xBRTYFiYOiIbwJTgSuczE5rPIRwmep9qHnn0FoAzi8SzFgNs7b6pwFoWzm0BP_V813hr6YZomVQerH46whjBHv_QzMR-PdF8ZxV4zElToDiD0RtlSzhnMFiUQtPfDYTQ16z0SxPZYNRrHGjRBMPQV2U");'
-          ></div>
-          <div class="flex flex-col">
-            <h1 class="text-base font-bold text-dark-blue">Plataforma de</h1>
-            <p class="text-sm text-gray-500">Gestión</p>
-          </div>
-        </div>
-        <nav class="flex flex-col gap-2">
-          <a :class="['flex items-center gap-3 px-3 py-2 rounded-lg', isActive('/admin/dashboard') ? 'bg-principal-blue/10 text-principal-blue' : 'text-gray-700 hover:bg-gray-100']" href="#" @click.prevent="$router.push('/admin/dashboard')">
-            <span :class="['material-symbols-outlined nofill', isActive('/admin/dashboard') ? 'text-principal-blue' : '']">dashboard</span>
-            <p class="text-sm font-medium leading-none">Dashboard</p>
-          </a>
-          <a :class="['flex items-center gap-3 px-3 py-2 rounded-lg', isActive('/admin/analisis-geografico') ? 'bg-principal-blue/10 text-principal-blue' : 'text-gray-700 hover:bg-gray-100']" href="#" @click.prevent="$router.push('/admin/analisis-geografico')">
-            <span class="material-symbols-outlined nofill">map</span>
-            <p class="text-sm font-medium">Tendencias geograficas</p>
-          </a>
-          <a :class="['flex items-center gap-3 px-3 py-2 rounded-lg', isActive('/admin/reportes') ? 'bg-principal-blue/10 text-principal-blue' : 'text-gray-700 hover:bg-gray-100']" href="#" @click.prevent="$router.push('/admin/reportes')">
-            <span :class="['material-symbols-outlined nofill', isActive('/admin/reportes') ? 'text-principal-blue' : '']">bar_chart</span>
-            <p class="text-sm font-medium leading-none">Reportes</p>
-          </a>
-          <a :class="['flex items-center gap-3 px-3 py-2 rounded-lg', isActive('/admin/desempeno') ? 'bg-principal-blue/10 text-principal-blue' : 'text-gray-700 hover:bg-gray-100']" href="#" @click.prevent="$router.push('/admin/desempeno')">
-            <span :class="['material-symbols-outlined nofill', isActive('/admin/desempeno') ? 'text-principal-blue' : '']">leaderboard</span>
-            <p class="text-sm font-medium">Desempeño</p>
-          </a>
-          <a :class="['flex items-center gap-3 px-3 py-2 rounded-lg', isActive('/admin/indicadores') ? 'bg-principal-blue/10 text-principal-blue' : 'text-gray-700 hover:bg-gray-100']" href="#" @click.prevent="$router.push('/admin/indicadores')">
-            <span :class="['material-symbols-outlined nofill', isActive('/admin/indicadores') ? 'text-principal-blue' : '']">insights</span>
-            <p class="text-sm font-medium">Indicadores</p>
-          </a>
-        </nav>
-        <div class="mt-auto">
-          <a class="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg" href="#">
-            <span class="material-symbols-outlined nofill">help</span>
-            <p class="text-sm font-medium">Ayuda</p>
-          </a>
-        </div>
-      </div>
-    </aside>
+    <SidebarAdmin />
 
     <!-- Main -->
     <main class="flex-1 flex overflow-hidden">
@@ -51,20 +8,95 @@
         <header class="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div class="flex flex-col">
             <h1 class="text-3xl font-extrabold text-dark-blue">Dashboard Ejecutivo</h1>
-            <p class="text-sm text-gray-500">Última actualización: hace 1 minuto</p>
+            <p class="text-sm text-gray-500">Resumen operativo de denuncias</p>
           </div>
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-wrap items-center gap-4">
             <div class="flex gap-2">
-              <button class="h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-lg bg-principal-blue text-white px-4 text-sm font-medium">Hoy</button>
-              <button class="h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-lg bg-white px-4 border border-medium-gray hover:bg-gray-50 text-sm font-medium text-gray-700">Esta semana</button>
-              <button class="h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-lg bg-white px-4 border border-medium-gray hover:bg-gray-50 text-sm font-medium text-gray-700">Este mes</button>
-              <button class="h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-lg bg-white px-4 border border-medium-gray hover:bg-gray-50 text-sm font-medium text-gray-700">Este año</button>
-              <button class="h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-lg bg-white px-4 border border-medium-gray hover:bg-gray-50 text-sm font-medium text-gray-700">Rango personalizado</button>
+              <button
+                class="h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-lg px-4 text-sm font-medium"
+                :class="range === 'day'
+                  ? 'bg-blue-400 text-white'
+                  : 'bg-white border border-medium-gray text-gray-700 hover:bg-gray-50'"
+                @click="changeRange('day')"
+              >
+                Hoy
+              </button>
+              <button
+                class="h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-lg px-4 text-sm font-medium"
+                :class="range === 'week'
+                  ? 'bg-blue-400 text-white'
+                  : 'bg-white border border-medium-gray text-gray-700 hover:bg-gray-50'"
+                @click="changeRange('week')"
+              >
+                Esta semana
+              </button>
+              <button
+                class="h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-lg px-4 text-sm font-medium"
+                :class="range === 'month'
+                  ? 'bg-blue-400 text-white'
+                  : 'bg-white border border-medium-gray text-gray-700 hover:bg-gray-50'"
+                @click="changeRange('month')"
+              >
+                Este mes
+              </button>
+              <button
+                class="h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-lg px-4 text-sm font-medium"
+                :class="range === 'year'
+                  ? 'bg-blue-400 text-white'
+                  : 'bg-white border border-medium-gray text-gray-700 hover:bg-gray-50'"
+                @click="changeRange('year')"
+              >
+                Este año
+              </button>
+              <button
+                class="h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-lg bg-white px-4 border border-medium-gray hover:bg-gray-50 text-sm font-medium text-gray-700"
+                @click="toggleCustomRange"
+              >
+                Rango personalizado
+              </button>
             </div>
-            <button class="flex items-center justify-center gap-2 overflow-hidden rounded-lg h-10 px-4 bg-principal-blue text-white text-sm font-bold leading-normal tracking-wide hover:bg-principal-blue/90">
+            <div v-if="showCustomRange" class="flex items-center gap-2 mt-1 justify-end w-full">
+              <input
+                type="date"
+                v-model="customFrom"
+                class="h-9 rounded-md border border-medium-gray px-2 text-xs text-gray-700 focus:border-principal-blue focus:ring-principal-blue"
+              />
+              <span class="text-xs text-gray-500">a</span>
+              <input
+                type="date"
+                v-model="customTo"
+                class="h-9 rounded-md border border-medium-gray px-2 text-xs text-gray-700 focus:border-principal-blue focus:ring-principal-blue"
+              />
+              <button
+                class="h-9 px-3 rounded-md bg-blue-400 text-white text-xs font-semibold hover:bg-principal-blue/90"
+                @click="applyCustomRange"
+              >
+                Aplicar
+              </button>
+              <button
+                class="h-9 px-3 rounded-md border border-medium-gray text-xs font-medium text-gray-600 bg-white hover:bg-gray-50"
+                @click="cancelCustomRange"
+              >
+                Cancelar
+              </button>
+            </div>
+            <button
+              class="flex items-center justify-center gap-2 overflow-hidden rounded-lg h-10 px-4 bg-blue-400 text-white text-sm font-bold leading-normal tracking-wide hover:bg-principal-blue/90"
+              @click="reloadDashboard"
+            >
               <span class="material-symbols-outlined text-base nofill">refresh</span>
               <span class="truncate">Actualizar datos</span>
             </button>
+            <div v-if="currentUser" class="flex items-center gap-2 pl-4 border-l border-medium-gray">
+              <div
+                class="bg-center bg-no-repeat bg-cover rounded-full size-9 flex-shrink-0"
+                :style="`background-image: url('https://ui-avatars.com/api/?name=${encodeURIComponent(currentUserName)}&background=0f5dd1&color=fff')`"
+              ></div>
+              <div class="flex flex-col min-w-0">
+                <span class="text-sm font-semibold truncate">{{ currentUserName }}</span>
+                <span class="text-xs text-gray-500 truncate">{{ currentUser?.email }}</span>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -201,9 +233,27 @@
                   <option>Filtrar por estado</option>
                 </select>
                 <div class="flex rounded-lg border border-medium-gray p-0.5 bg-gray-100 text-sm">
-                  <button class="px-2 py-0.5 rounded-md">Día</button>
-                  <button class="px-2 py-0.5 rounded-md bg-white shadow-sm">Semana</button>
-                  <button class="px-2 py-0.5 rounded-md">Mes</button>
+                  <button
+                    class="px-2 py-0.5 rounded-md"
+                    :class="temporalGranularity === 'day' ? 'bg-white shadow-sm' : ''"
+                    @click="changeTemporalGranularity('day')"
+                  >
+                    Día
+                  </button>
+                  <button
+                    class="px-2 py-0.5 rounded-md"
+                    :class="temporalGranularity === 'week' ? 'bg-white shadow-sm' : ''"
+                    @click="changeTemporalGranularity('week')"
+                  >
+                    Semana
+                  </button>
+                  <button
+                    class="px-2 py-0.5 rounded-md"
+                    :class="temporalGranularity === 'month' ? 'bg-white shadow-sm' : ''"
+                    @click="changeTemporalGranularity('month')"
+                  >
+                    Mes
+                  </button>
                 </div>
               </div>
             </div>
@@ -347,14 +397,28 @@
       </aside>
     </main>
   </div>
+  ...
 </template>
 
 <script>
 import axios from 'axios'
+import SidebarAdmin from '@/components/SidebarAdmin.vue'
 export default {
   name: 'DashboardAdmin',
+  components: { SidebarAdmin },
+  data() {
+    return {
+      range: 'month',
+      temporalGranularity: 'week',
+      showCustomRange: false,
+      customFrom: '',
+      customTo: ''
+    }
+  },
+  computed: {
+  },
   mounted() {
-    // Simple counter animation
+    // Animación simple de contador
     const animateCounter = (elId, duration = 1200) => {
       const el = document.getElementById(elId)
       if (!el) return
@@ -389,13 +453,22 @@ export default {
       }
     }
 
+    const buildParams = () => {
+      const params = { range: this.range }
+      if (this.range === 'custom' && this.customFrom && this.customTo) {
+        params.from = this.customFrom
+        params.to = this.customTo
+      }
+      return params
+    }
+
     const fetchSummary = async () => {
       try {
         const token = localStorage.getItem('access_token')
         if (token) {
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
         }
-        const { data } = await axios.get('/api/reportes/dashboard/summary/')
+        const { data } = await axios.get('/api/reportes/dashboard/summary/', { params: buildParams() })
 
         // Total denuncias
         const totalEl = document.getElementById('total-counter')
@@ -460,11 +533,9 @@ export default {
       }
     }
 
-    fetchSummary()
-
     const fetchCategorias = async () => {
       try {
-        const { data } = await axios.get('/api/reportes/dashboard/categorias/')
+        const { data } = await axios.get('/api/reportes/dashboard/categorias/', { params: buildParams() })
         const cats = data.categorias || []
         const setCat = (idx, nombre, count, perc) => {
           const nameEl = document.getElementById(`cat${idx}-name`)
@@ -473,30 +544,39 @@ export default {
           if (countEl) countEl.textContent = `${count} (${perc}%)`
         }
         for (let i = 0; i < Math.min(5, cats.length); i++) {
-          setCat(i+1, cats[i].nombre, cats[i].count, cats[i].porcentaje)
+          setCat(i + 1, cats[i].nombre, cats[i].count, cats[i].porcentaje)
         }
-      } catch (e) { console.error('Error categorias', e) }
+      } catch (e) {
+        console.error('Error categorias', e)
+      }
     }
 
     const fetchTemporal = async () => {
       try {
-        const { data } = await axios.get('/api/reportes/dashboard/temporal/')
+        const params = buildParams()
+        params.granularity = this.temporalGranularity
+        const { data } = await axios.get('/api/reportes/dashboard/temporal/', { params })
         const series = data.series || []
         const labels = series.map(s => s.label)
-        ;['temporal-l1','temporal-l2','temporal-l3','temporal-l4','temporal-l5'].forEach((id, idx) => {
+        ;['temporal-l1', 'temporal-l2', 'temporal-l3', 'temporal-l4', 'temporal-l5'].forEach((id, idx) => {
           const el = document.getElementById(id)
           if (el && labels[idx]) el.textContent = labels[idx]
         })
-      } catch (e) { console.error('Error temporal', e) }
+      } catch (e) {
+        console.error('Error temporal', e)
+      }
     }
 
     const fetchPrioridades = async () => {
       try {
-        const { data } = await axios.get('/api/reportes/dashboard/prioridades/')
+        const { data } = await axios.get('/api/reportes/dashboard/prioridades/', { params: buildParams() })
         const series = data.series || []
         const setCol = (colIdx, baja, media, alta, urgente) => {
           const total = (baja + media + alta + urgente) || 1
-          const setH = (id, val) => { const el = document.getElementById(id); if (el) el.style.height = `${Math.round(val*100/total)}%` }
+          const setH = (id, val) => {
+            const el = document.getElementById(id)
+            if (el) el.style.height = `${Math.round(val * 100 / total)}%`
+          }
           setH(`prio-${colIdx}-baja`, baja)
           setH(`prio-${colIdx}-media`, media)
           setH(`prio-${colIdx}-alta`, alta)
@@ -504,34 +584,61 @@ export default {
         }
         for (let i = 0; i < Math.min(4, series.length); i++) {
           const s = series[i]
-          setCol(i+1, s.Baja||0, s.Media||0, s.Alta||0, s.Urgente||0)
-          const lbl = document.getElementById(`prio-l${i+1}`)
+          setCol(i + 1, s.Baja || 0, s.Media || 0, s.Alta || 0, s.Urgente || 0)
+          const lbl = document.getElementById(`prio-l${i + 1}`)
           if (lbl) lbl.textContent = s.label
         }
-      } catch (e) { console.error('Error prioridades', e) }
+      } catch (e) {
+        console.error('Error prioridades', e)
+      }
     }
 
     const fetchAlerts = async () => {
       try {
-        const { data } = await axios.get('/api/reportes/dashboard/alerts/')
+        const { data } = await axios.get('/api/reportes/dashboard/alerts/', { params: buildParams() })
         const urg = document.getElementById('alert-urgentes')
-        if (urg) urg.textContent = `${data.urgentes_sin_asignar||0} denuncias requieren asignación inmediata.`
+        if (urg) urg.textContent = `${data.urgentes_sin_asignar || 0} denuncias requieren asignación inmediata.`
         const sla = document.getElementById('alert-sla')
-        if (sla) sla.textContent = `${data.proximas_vencer_24h||0} denuncias vencen en menos de 24h.`
-      } catch (e) { console.error('Error alerts', e) }
+        if (sla) sla.textContent = `${data.proximas_vencer_24h || 0} denuncias vencen en menos de 24h.`
+      } catch (e) {
+        console.error('Error alerts', e)
+      }
     }
 
+    // Carga inicial de todos los bloques del dashboard
+    fetchSummary()
     fetchCategorias()
     fetchTemporal()
     fetchPrioridades()
     fetchAlerts()
-  }
-  ,
+  },
   methods: {
-    isActive(path) {
-      try {
-        return this.$route.path.startsWith(path)
-      } catch { return false }
+    changeRange(newRange) {
+      if (this.range === newRange) return
+      this.range = newRange
+      this.showCustomRange = false
+      // recargar todos los bloques del dashboard con el nuevo rango
+      this.$options.mounted[0].call(this)
+    },
+    reloadDashboard() {
+      // recarga completa respetando el rango y granularidad actuales
+      this.$options.mounted[0].call(this)
+    },
+    changeTemporalGranularity(newGran) {
+      if (this.temporalGranularity === newGran) return
+      this.temporalGranularity = newGran
+      this.$options.mounted[0].call(this)
+    },
+    toggleCustomRange() {
+      this.showCustomRange = !this.showCustomRange
+    },
+    applyCustomRange() {
+      if (!this.customFrom || !this.customTo) return
+      this.range = 'custom'
+      this.$options.mounted[0].call(this)
+    },
+    cancelCustomRange() {
+      this.showCustomRange = false
     }
   }
 }
@@ -540,7 +647,6 @@ export default {
 <style scoped>
 .tooltip{ position: relative; display: inline-block }
 .tooltip[data-tip]:hover::after{
-  content: attr(data-tip);
   position: absolute;
   left: 0;
   top: 120%;

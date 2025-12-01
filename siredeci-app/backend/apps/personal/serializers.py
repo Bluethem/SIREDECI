@@ -3,6 +3,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
 from apps.usuarios.models import Usuario
+from apps.usuarios.utils import get_codigos_roles
 from apps.personal.models import PersonalMunicipal
 
 
@@ -31,14 +32,11 @@ class LoginAdminSerializer(serializers.Serializer):
                     'message': 'El email o contraseña proporcionados son incorrectos.'
                 })
 
-            # Verificar que el usuario tenga PersonalMunicipal asociado
-            try:
-                personal = PersonalMunicipal.objects.get(id_usuario=usuario)
-            except PersonalMunicipal.DoesNotExist:
-                raise serializers.ValidationError({
-                    'error': 'Acceso no autorizado',
-                    'message': 'Este usuario no tiene permisos de administrador.'
-                })
+            # Obtener roles del usuario
+            codigos_roles = list(get_codigos_roles(usuario))
+
+            es_admin_sistemico = any(r in ['ROL-001', 'ROL-002', 'ROL-006'] for r in codigos_roles)
+            es_personal_municipal = any(r in ['ROL-003', 'ROL-004'] for r in codigos_roles)
 
             # Verificar estado de la cuenta del usuario
             if usuario.estado_cuenta != 'Activo':
@@ -47,21 +45,39 @@ class LoginAdminSerializer(serializers.Serializer):
                     'message': f'Su cuenta está {usuario.estado_cuenta.lower()}. Contacte al administrador.'
                 })
 
-            # Verificar estado laboral del personal
-            if personal.estado_laboral != 'Activo':
+            personal = None
+
+            # Para roles operativos municipales sí es obligatorio tener PersonalMunicipal activo
+            if es_personal_municipal:
+                try:
+                    personal = PersonalMunicipal.objects.get(id_usuario=usuario)
+                except PersonalMunicipal.DoesNotExist:
+                    raise serializers.ValidationError({
+                        'error': 'Acceso no autorizado',
+                        'message': 'Este usuario no tiene un registro de personal municipal asociado.'
+                    })
+
+                if personal.estado_laboral != 'Activo':
+                    raise serializers.ValidationError({
+                        'error': 'Personal inactivo',
+                        'message': f'Su estado laboral es {personal.estado_laboral}. Contacte al administrador.'
+                    })
+
+            # Si no es ni admin sistémico ni personal municipal, no tiene acceso al panel interno
+            if not es_admin_sistemico and not es_personal_municipal:
                 raise serializers.ValidationError({
-                    'error': 'Personal inactivo',
-                    'message': f'Su estado laboral es {personal.estado_laboral}. Contacte al administrador.'
+                    'error': 'Acceso no autorizado',
+                    'message': 'Este usuario no tiene roles válidos para el panel administrativo.'
                 })
 
             password_is_valid = False
             stored_hash = usuario.password_hash or ''
 
-            # Intentar validar con los hashers configurados en Django
+            # 1) Intentar validar con los hashers configurados en Django
             if stored_hash:
                 password_is_valid = check_password(password, stored_hash)
 
-            # Compatibilidad con hashes legacy tipo bcrypt plano "$2b$..."
+            # 2) Compatibilidad con hashes legacy tipo bcrypt plano "$2b$..."
             if not password_is_valid and stored_hash.startswith('$2b$'):
                 try:
                     import bcrypt
@@ -72,6 +88,12 @@ class LoginAdminSerializer(serializers.Serializer):
                         usuario.password_hash = make_password(password)
                 except Exception:
                     password_is_valid = False
+
+            # 3) Compatibilidad temporal con contraseñas en texto plano
+            #    (caso de ambientes de desarrollo o scripts de carga inicial)
+            if not password_is_valid and stored_hash and not stored_hash.startswith('$2b$'):
+                if password == stored_hash:
+                    password_is_valid = True
 
             if not password_is_valid:
                 # Incrementar intentos de login fallidos

@@ -161,7 +161,14 @@
       </div>
     </main>
   </div>
-</template>
+ </template>
+
+<script setup>
+import { computed } from 'vue'
+import { isSuperAdmin, isAdmin } from '@/utils/roles'
+
+const canAccessAdvancedReports = computed(() => isSuperAdmin() || isAdmin())
+</script>
 
 <script>
 export default {
