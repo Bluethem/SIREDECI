@@ -1,10 +1,11 @@
 <template>
-  <div class="font-display bg-very-light-gray text-dark-blue flex min-h-screen w-full">
+  <div class="font-display bg-theme-light-gray dark:bg-background-dark text-theme-dark-blue dark:text-gray-200 flex h-screen w-full">
     <SidebarAdmin />
 
     <!-- Main content -->
-    <main class="flex-1 p-6 lg:p-8">
-      <div class="w-full max-w-7xl mx-auto">
+    <main class="flex flex-1 flex-col overflow-hidden">
+      <div class="flex-1 overflow-y-auto p-6 lg:p-8">
+        <div class="w-full max-w-7xl mx-auto">
         <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
           <div>
             <p class="text-3xl font-black leading-tight tracking-[-0.033em]">Ranking de Desempeño por Área</p>
@@ -136,49 +137,49 @@
           </div>
         </div>
       </div>
-    </main>
-
-    <!-- Modal -->
-    <div id="detail-modal" class="modal">
-      <div class="modal-content">
-        <div class="flex justify-between items-center border-b border-medium-gray p-6">
-          <h2 id="modal-title" class="text-2xl font-bold">Detalle del Área</h2>
-          <button @click="closeModal" class="text-2xl text-gray-400 hover:text-gray-600">×</button>
-        </div>
-        <div class="p-6 space-y-6">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <p class="text-sm text-gray-600">Jefe de Área</p>
-              <p id="modal-jefe" class="text-lg font-bold">-</p>
-            </div>
-            <div>
-              <p class="text-sm text-gray-600">Capacidad</p>
-              <p id="modal-capacidad" class="text-lg font-bold">-</p>
-            </div>
-            <div>
-              <p class="text-sm text-gray-600">Carga Actual</p>
-              <p id="modal-carga" class="text-lg font-bold">-</p>
-            </div>
-            <div>
-              <p class="text-sm text-gray-600">Eficiencia</p>
-              <p id="modal-eficiencia" class="text-lg font-bold">-</p>
-            </div>
+      <!-- Modal de detalle -->
+      <div id="detail-modal" class="modal" @click.self="closeModal">
+        <div class="modal-content">
+          <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+            <h2 id="modal-title" class="text-xl font-bold text-gray-900">Detalle</h2>
+            <button type="button" class="text-gray-500 hover:text-gray-700" @click="closeModal">✕</button>
           </div>
-          <div>
-            <h3 class="font-bold mb-3">Gráfico de Evolución Mensual</h3>
-            <canvas id="modal-chart-evolution" style="max-height:300px;"></canvas>
-          </div>
-          <div>
-            <h3 class="font-bold mb-3">Personal Asignado</h3>
-            <div id="modal-staff" class="space-y-2"></div>
-          </div>
-          <div>
-            <h3 class="font-bold mb-3">Observaciones</h3>
-            <p id="modal-observations" class="text-gray-700">-</p>
+          <div class="p-6 space-y-6">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <p class="text-sm text-gray-600">Jefe de Área</p>
+                <p id="modal-jefe" class="text-lg font-bold">-</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Capacidad</p>
+                <p id="modal-capacidad" class="text-lg font-bold">-</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Carga Actual</p>
+                <p id="modal-carga" class="text-lg font-bold">-</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Eficiencia</p>
+                <p id="modal-eficiencia" class="text-lg font-bold">-</p>
+              </div>
+            </div>
+            <div>
+              <h3 class="font-bold mb-3">Gráfico de Evolución Mensual</h3>
+              <canvas id="modal-chart-evolution" style="max-height:300px;"></canvas>
+            </div>
+            <div>
+              <h3 class="font-bold mb-3">Personal Asignado</h3>
+              <div id="modal-staff" class="space-y-2"></div>
+            </div>
+            <div>
+              <h3 class="font-bold mb-3">Observaciones</h3>
+              <p id="modal-observations" class="text-gray-700">-</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
+    </main>
   </div>
 </template>
 

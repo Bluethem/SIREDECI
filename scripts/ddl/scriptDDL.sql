@@ -588,7 +588,6 @@ COMMENT ON TABLE LogAuditoria IS 'Registro inmutable de todas las acciones crít
 -- MÓDULO 5: REPORTES Y ESTADÍSTICAS
 -- ============================================
 
--- Tabla: Reporte
 CREATE TABLE Reporte (
     id_reporte SERIAL PRIMARY KEY,
     codigo_reporte VARCHAR(20) UNIQUE NOT NULL,
@@ -602,6 +601,8 @@ CREATE TABLE Reporte (
     ruta_archivo VARCHAR(500) UNIQUE,
     es_publico BOOLEAN NOT NULL DEFAULT FALSE,
     id_usuario_generador INTEGER NOT NULL,
+    estado_generacion VARCHAR(20) NOT NULL DEFAULT 'Borrador',
+    parametros_configuracion JSONB NOT NULL DEFAULT '{}'::jsonb,
     
     CONSTRAINT fk_reporte_usuario FOREIGN KEY (id_usuario_generador) REFERENCES Usuario(id_usuario),
     CONSTRAINT chk_tipo_reporte CHECK (tipo_reporte IN ('Ejecutivo', 'Operativo', 'Estadístico', 'Auditoria')),

@@ -2,6 +2,11 @@ from django.utils import timezone
 from django.db.models import Count, Avg
 from django.db.models.functions import TruncWeek, TruncDate
 from datetime import datetime, time as time_cls
+import os
+import csv
+
+from django.conf import settings
+from django.http import FileResponse, Http404
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
@@ -564,6 +569,229 @@ def ranking_desempeno(request):
         'limit': limit,
         'results': results,
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsStaffLike])
+def admin_reportes_list(request):
+    """Listado de reportes generados por el usuario autenticado.
+
+    Filtros opcionales por tipo_reporte, formato_exportacion, estado_generacion.
+    """
+    qs = Reporte.objects.filter(id_usuario_generador=request.user)
+
+    tipo = request.GET.get('tipo_reporte')
+    if tipo:
+        qs = qs.filter(tipo_reporte=tipo)
+
+    formato = request.GET.get('formato')
+    if formato:
+        qs = qs.filter(formato_exportacion=formato)
+
+    estado = request.GET.get('estado')
+    if estado:
+        qs = qs.filter(estado_generacion=estado)
+
+    data = []
+    for rpt in qs.order_by('-fecha_generacion')[:200]:
+        data.append({
+            'codigo_reporte': rpt.codigo_reporte,
+            'tipo_reporte': rpt.tipo_reporte,
+            'nombre': rpt.nombre,
+            'descripcion': rpt.descripcion,
+            'fecha_generacion': rpt.fecha_generacion.isoformat() if rpt.fecha_generacion else None,
+            'fecha_inicio': rpt.fecha_inicio.isoformat() if rpt.fecha_inicio else None,
+            'fecha_fin': rpt.fecha_fin.isoformat() if rpt.fecha_fin else None,
+            'formato_exportacion': rpt.formato_exportacion,
+            'estado_generacion': rpt.estado_generacion,
+            'es_publico': rpt.es_publico,
+        })
+
+    return Response({'results': data})
+
+
+def _parse_iso_date(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value).date()
+    except Exception:
+        return None
+
+
+def _normalize_tipo_reporte(value):
+    if not value:
+        return 'Ejecutivo'
+    mapping = {
+        'ejecutivo': 'Ejecutivo',
+        'operativo': 'Operativo',
+        'estadistico': 'Estadístico',
+        'estadístico': 'Estadístico',
+        'auditoria': 'Auditoria',
+        'auditoría': 'Auditoria',
+    }
+    return mapping.get(value.lower(), 'Ejecutivo')
+
+
+def _normalize_formato_exportacion(value):
+    if not value:
+        return 'CSV'
+    mapping = {
+        'csv': 'CSV',
+        'excel': 'Excel',
+        'pdf': 'PDF',
+        'json': 'JSON',
+    }
+    return mapping.get(value.lower(), 'CSV')
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsStaffLike])
+def admin_reportes_generate(request):
+    """Crea y genera un reporte sencillo en CSV sobre denuncias.
+
+    Espera en el body:
+      - nombre (str)
+      - descripcion (str, opcional)
+      - tipo_reporte (slug como 'ejecutivo', 'operativo', etc.)
+      - fecha_inicio, fecha_fin (YYYY-MM-DD)
+      - formato_exportacion (por ahora se soporta CSV, otros se aceptan pero
+        se generan igual como CSV de ejemplo)
+      - parametros_configuracion (JSON opcional) con claves:
+          * filtros: {
+              categorias: [nombres],
+              estados: [estados],
+              prioridades: [prioridades]
+            }
+    """
+    payload = request.data or {}
+
+    nombre = (payload.get('nombre') or '').strip()
+    if not nombre:
+        return Response({'detail': 'El nombre del reporte es obligatorio.'}, status=400)
+
+    descripcion = (payload.get('descripcion') or '').strip()
+    tipo = _normalize_tipo_reporte(payload.get('tipo_reporte') or payload.get('tipo'))
+    formato = _normalize_formato_exportacion(payload.get('formato_exportacion') or payload.get('formato'))
+
+    fecha_inicio = _parse_iso_date(payload.get('fecha_inicio'))
+    fecha_fin = _parse_iso_date(payload.get('fecha_fin'))
+    if not fecha_inicio or not fecha_fin:
+        return Response({'detail': 'fecha_inicio y fecha_fin son obligatorias y deben tener formato YYYY-MM-DD.'}, status=400)
+
+    if fecha_fin < fecha_inicio:
+        return Response({'detail': 'fecha_fin no puede ser anterior a fecha_inicio.'}, status=400)
+
+    parametros = payload.get('parametros_configuracion') or {}
+    filtros = parametros.get('filtros') or {}
+
+    # Crear instancia de reporte en estado En progreso
+    rpt = Reporte(
+        nombre=nombre,
+        descripcion=descripcion,
+        tipo_reporte=tipo,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        formato_exportacion=formato,
+        id_usuario_generador=request.user,
+        estado_generacion='En progreso',
+        parametros_configuracion=parametros,
+    )
+    rpt.save()
+
+    try:
+        # Construir queryset base de denuncias
+        qs = Denuncia.objects.select_related('id_categoria', 'id_ubicacion').filter(
+            fecha_registro__date__range=(fecha_inicio, fecha_fin)
+        )
+
+        categorias = filtros.get('categorias') or []
+        if categorias:
+            qs = qs.filter(id_categoria__nombre__in=categorias)
+
+        estados = filtros.get('estados') or []
+        if estados:
+            qs = qs.filter(estado__in=estados)
+
+        prioridades = filtros.get('prioridades') or []
+        if prioridades:
+            qs = qs.filter(prioridad__in=prioridades)
+
+        # Asegurar carpeta de salida
+        media_root = getattr(settings, 'MEDIA_ROOT', None) or ''
+        out_dir = os.path.join(media_root, 'reportes')
+        os.makedirs(out_dir, exist_ok=True)
+
+        filename = f"{rpt.codigo_reporte}.csv"
+        abs_path = os.path.join(out_dir, filename)
+
+        # Generar CSV sencillo
+        with open(abs_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                'Código', 'Título', 'Descripción', 'Fecha registro',
+                'Estado', 'Prioridad', 'Categoría', 'Distrito', 'Dirección',
+            ])
+            for d in qs.iterator():
+                ubi = getattr(d, 'id_ubicacion', None)
+                cat = getattr(d, 'id_categoria', None)
+                writer.writerow([
+                    d.codigo_denuncia,
+                    d.titulo,
+                    (d.descripcion or '')[:200],
+                    d.fecha_registro.isoformat() if d.fecha_registro else '',
+                    d.estado,
+                    d.prioridad,
+                    getattr(cat, 'nombre', ''),
+                    getattr(ubi, 'distrito', ''),
+                    getattr(ubi, 'direccion', ''),
+                ])
+
+        # Guardar ruta relativa en el modelo y marcar como completado
+        rpt.ruta_archivo = os.path.join('reportes', filename)
+        rpt.estado_generacion = 'Completado'
+        rpt.save(update_fields=['ruta_archivo', 'estado_generacion'])
+
+    except Exception as exc:
+        rpt.estado_generacion = 'Fallido'
+        rpt.save(update_fields=['estado_generacion'])
+        return Response({'detail': f'Error generando el reporte: {exc}'}, status=500)
+
+    data = {
+        'codigo_reporte': rpt.codigo_reporte,
+        'tipo_reporte': rpt.tipo_reporte,
+        'nombre': rpt.nombre,
+        'descripcion': rpt.descripcion,
+        'fecha_generacion': rpt.fecha_generacion.isoformat() if rpt.fecha_generacion else None,
+        'fecha_inicio': rpt.fecha_inicio.isoformat() if rpt.fecha_inicio else None,
+        'fecha_fin': rpt.fecha_fin.isoformat() if rpt.fecha_fin else None,
+        'formato_exportacion': rpt.formato_exportacion,
+        'estado_generacion': rpt.estado_generacion,
+        'ruta_archivo': rpt.ruta_archivo,
+    }
+    return Response(data, status=201)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsStaffLike])
+def admin_reportes_download(request, codigo_reporte):
+    """Devuelve el archivo físico de un reporte generado por el usuario."""
+    try:
+        rpt = Reporte.objects.get(codigo_reporte=codigo_reporte, id_usuario_generador=request.user)
+    except Reporte.DoesNotExist:
+        raise Http404("Reporte no encontrado o sin permisos.")
+
+    if rpt.estado_generacion != 'Completado' or not rpt.ruta_archivo:
+        return Response({'detail': 'El reporte aún no está disponible para descargar.'}, status=400)
+
+    media_root = getattr(settings, 'MEDIA_ROOT', None) or ''
+    abs_path = os.path.join(media_root, rpt.ruta_archivo)
+    if not os.path.isfile(abs_path):
+        raise Http404("Archivo de reporte no encontrado.")
+
+    filename = os.path.basename(abs_path)
+    f = open(abs_path, 'rb')
+    return FileResponse(f, as_attachment=True, filename=filename, content_type='text/csv')
 
 # =============================
 # Endpoints públicos de reportes

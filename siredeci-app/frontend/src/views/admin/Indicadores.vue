@@ -1,9 +1,10 @@
 <template>
-  <div class="font-display bg-background-light dark:bg-background-dark flex min-h-screen w-full text-gray-900 dark:text-white">
+  <div class="font-display bg-background-light dark:bg-background-dark flex h-screen w-full text-gray-900 dark:text-white">
     <SidebarAdmin />
 
     <!-- Main content -->
-    <main class="flex-1 flex flex-col p-6 lg:p-8">
+    <main class="flex-1 flex overflow-hidden">
+      <div class="flex-1 p-6 lg:p-8 overflow-y-auto">
       <!-- Heading -->
       <header class="mb-6">
         <h1 class="text-3xl md:text-4xl font-black leading-tight tracking-[-0.02em]">Indicadores y Métricas Personalizadas</h1>
@@ -82,6 +83,7 @@
       >
         <span class="material-symbols-outlined text-3xl">add</span>
       </button>
+      </div>
     </main>
   </div>
 </template>

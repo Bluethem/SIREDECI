@@ -1,47 +1,6 @@
 <template>
-  <div class="font-display bg-very-light-gray text-dark-blue flex min-h-screen w-full">
-    <aside class="w-64 bg-white flex flex-col border-r border-medium-gray">
-      <div class="flex flex-col h-full p-4">
-        <div class="flex items-center gap-3 p-2 mb-4">
-          <div
-            class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-            style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBaXtYxFyHwjmkfzelKdSwckui0VVqBxvGCgbtXZGm7PLNonck59Pa-GNBQiIsq87W1Lh6EuZpvNHIl5ut6OMcMKYLyvJY29ahhMDpwOxBZPAlC0GJX4nsu6xBRTYFiYOiIbwJTgSuczE5rPIRwmep9qHnn0FoAzi8SzFgNs7b6pwFoWzm0BP_V813hr6YZomVQerH46whjBHv_QzMR-PdF8ZxV4zElToDiD0RtlSzhnMFiUQtPfDYTQ16z0SxPZYNRrHGjRBMPQV2U');"
-          ></div>
-          <div class="flex flex-col">
-            <h1 class="text-base font-bold text-dark-blue">Plataforma de</h1>
-            <p class="text-sm text-gray-500">Gestión</p>
-          </div>
-        </div>
-        <nav class="flex flex-col gap-2">
-          <a :class="navClass('/admin/dashboard')" href="#" @click.prevent="goTo('/admin/dashboard')">
-            <span :class="['material-symbols-outlined nofill', isActive('/admin/dashboard') ? 'text-principal-blue' : '']">dashboard</span>
-            <p class="text-sm font-medium leading-none">Dashboard</p>
-          </a>
-          <a :class="navClass('/admin/analisis-geografico')" href="#" @click.prevent="goTo('/admin/analisis-geografico')">
-            <span class="material-symbols-outlined nofill">map</span>
-            <p class="text-sm font-medium">Tendencias geograficas</p>
-          </a>
-          <a :class="navClass('/admin/reportes')" href="#" @click.prevent="goTo('/admin/reportes')">
-            <span :class="['material-symbols-outlined nofill', isActive('/admin/reportes') ? 'text-principal-blue' : '']">bar_chart</span>
-            <p class="text-sm font-medium leading-none">Reportes</p>
-          </a>
-          <a :class="navClass('/admin/desempeno')" href="#" @click.prevent="goTo('/admin/desempeno')">
-            <span :class="['material-symbols-outlined nofill', isActive('/admin/desempeno') ? 'text-principal-blue' : '']">leaderboard</span>
-            <p class="text-sm font-medium">Desempeño</p>
-          </a>
-          <a :class="navClass('/admin/indicadores')" href="#" @click.prevent="goTo('/admin/indicadores')">
-            <span :class="['material-symbols-outlined nofill', isActive('/admin/indicadores') ? 'text-principal-blue' : '']">insights</span>
-            <p class="text-sm font-medium">Indicadores</p>
-          </a>
-        </nav>
-        <div class="mt-auto">
-          <a class="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg" href="#">
-            <span class="material-symbols-outlined nofill">help</span>
-            <p class="text-sm font-medium">Ayuda</p>
-          </a>
-        </div>
-      </div>
-    </aside>
+  <div class="font-display bg-theme-light-gray dark:bg-background-dark text-theme-dark-blue dark:text-gray-200 flex min-h-screen w-full">
+    <SidebarAdmin />
 
     <main class="flex-1 p-6 lg:p-8 bg-background-light">
       <div class="max-w-7xl mx-auto">
@@ -163,6 +122,7 @@
                       :key="action.label"
                       class="w-full flex items-center justify-center h-10 px-4 text-sm font-bold rounded-lg transition-colors"
                       :class="action.variant === 'primary' ? 'text-white bg-primary hover:bg-primary/90' : 'border border-border-gray dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                      @click="handleResultAction(action)"
                     >
                       <span class="material-symbols-outlined mr-1.5" style="font-size: 18px;">{{ action.icon }}</span>
                       {{ action.label }}
@@ -179,20 +139,20 @@
 </template>
 
 <script>
+import axios from 'axios'
+import SidebarAdmin from '@/components/SidebarAdmin.vue'
+
 export default {
   name: 'VistaPreviaReportes',
+  components: { SidebarAdmin },
   data() {
     return {
-      previewSelections: [
-        'Quejas: Resumen, Por estado',
-        'Rendimiento: Tiempo medio',
-        'Geografía: Mapa de calor',
-        'Indicadores: KPIs principales'
-      ],
+      config: null,
+      previewSelections: [],
       summaryCards: [
-        { label: 'Secciones', value: '8' },
-        { label: 'Páginas (PDF)', value: '~15' },
-        { label: 'Tamaño aprox.', value: '2.5 MB' }
+        { label: 'Secciones', value: '0' },
+        { label: 'Páginas (PDF)', value: '~0' },
+        { label: 'Tamaño aprox.', value: '—' }
       ],
       advancedOptions: [
         { key: 'charts', label: 'Incluir gráficos e imágenes', checked: true }
@@ -200,13 +160,48 @@ export default {
       statusSteps: [
         { label: 'Recopilando datos...', state: 'done' },
         { label: 'Procesando información...', state: 'done' },
-        { label: 'Generando gráficos...', state: 'current' },
-        { label: 'Exportando a PDF...', state: 'pending' }
+        { label: 'Generando archivo...', state: 'pending' },
+        { label: 'Listo para descargar', state: 'pending' }
       ],
-      progressPercent: 75,
+      progressPercent: 0,
       resultActions: [
-        { label: 'Descargar ahora', icon: 'download', variant: 'primary' }
-      ]
+        { key: 'download', label: 'Descargar ahora', icon: 'download', variant: 'primary' }
+      ],
+      generatedReportCode: null,
+      loadingGenerate: false
+    }
+  },
+  created() {
+    try {
+      const raw = localStorage.getItem('admin_report_config')
+      if (raw) {
+        this.config = JSON.parse(raw)
+      }
+    } catch (e) {
+      console.error('Error leyendo configuración de reporte', e)
+      this.config = null
+    }
+
+    // Si no hay configuración básica, redirigir al primer paso del generador
+    if (!this.config || !this.config.basic) {
+      this.$router.replace('/admin/generador-reportes').catch(() => {})
+      return
+    }
+
+    if (this.config && Array.isArray(this.config.selection)) {
+      this.previewSelections = this.config.selection
+    } else {
+      this.previewSelections = []
+    }
+
+    const secciones = this.previewSelections.length
+    this.summaryCards[0].value = String(secciones)
+    this.summaryCards[1].value = secciones > 0 ? `~${Math.max(3, secciones * 2)}` : '~0'
+    this.summaryCards[2].value = secciones > 0 ? '1-3 MB' : '—'
+
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
     }
   },
   methods: {
@@ -217,12 +212,6 @@ export default {
         return false
       }
     },
-    navClass(path) {
-      return [
-        'flex items-center gap-3 px-3 py-2 rounded-lg',
-        this.isActive(path) ? 'bg-principal-blue/10 text-principal-blue' : 'text-gray-700 hover:bg-gray-100'
-      ]
-    },
     goTo(path) {
       this.$router.push(path).catch(() => {})
     },
@@ -230,12 +219,93 @@ export default {
       console.log('Guardando configuración de vista previa...')
     },
     generarReporte() {
-      console.log('Generando reporte final...')
+      if (this.loadingGenerate) return
+      if (!this.config || !this.config.basic) {
+        console.error('No hay configuración de reporte disponible')
+        return
+      }
+
+      this.loadingGenerate = true
+      this.progressPercent = 10
+      this.statusSteps[2].state = 'current'
+
+      const { basic, filters } = this.config
+
+      // Parsear rango de fechas "DD/MM/YYYY - DD/MM/YYYY" a YYYY-MM-DD
+      const parseRange = (value) => {
+        if (!value || typeof value !== 'string') return { start: null, end: null }
+        const parts = value.split('-')
+        if (parts.length !== 2) return { start: null, end: null }
+        const toIso = (s) => {
+          const t = s.trim().split('/')
+          if (t.length !== 3) return null
+          const [dd, mm, yyyy] = t
+          return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`
+        }
+        return { start: toIso(parts[0]), end: toIso(parts[1]) }
+      }
+
+      const { start, end } = parseRange(basic.rangoFechas || '')
+
+      const payload = {
+        nombre: basic.nombre,
+        descripcion: basic.descripcion,
+        tipo_reporte: basic.tipo,
+        fecha_inicio: start,
+        fecha_fin: end,
+        formato_exportacion: basic.formato,
+        parametros_configuracion: {
+          secciones: this.previewSelections,
+          filtros: {
+            categorias: (filters && filters.categories) || [],
+            estados: (filters && filters.states) || [],
+            prioridades: (filters && filters.priorities) || []
+          }
+        }
+      }
+
+      axios
+        .post('/api/reportes/reportes/generar/', payload)
+        .then((response) => {
+          const data = response.data || {}
+          this.generatedReportCode = data.codigo_reporte || null
+          this.progressPercent = 100
+          this.statusSteps = [
+            { label: 'Recopilando datos...', state: 'done' },
+            { label: 'Procesando información...', state: 'done' },
+            { label: 'Generando archivo...', state: 'done' },
+            { label: 'Listo para descargar', state: 'current' }
+          ]
+        })
+        .catch((error) => {
+          console.error('Error generando reporte final', error)
+          this.statusSteps = [
+            { label: 'Error al generar el reporte', state: 'pending' },
+            { label: 'Revisa los parámetros y vuelve a intentar', state: 'pending' },
+            { label: '', state: 'pending' },
+            { label: '', state: 'pending' }
+          ]
+          this.progressPercent = 0
+        })
+        .finally(() => {
+          this.loadingGenerate = false
+        })
     },
     statusTextClass(state) {
       if (state === 'done') return 'text-gray-400 dark:text-gray-500'
       if (state === 'current') return 'font-medium text-primary dark:text-primary-light'
       return 'text-gray-400 dark:text-gray-500 opacity-70'
+    },
+    async handleResultAction(action) {
+      if (action.key === 'download') {
+        if (!this.generatedReportCode) {
+          console.warn('No hay reporte generado para descargar aún')
+          return
+        }
+        const url = `/api/reportes/reportes/${encodeURIComponent(this.generatedReportCode)}/download/`
+        // Usamos redirección simple del navegador para descarga
+        window.open(url, '_blank')
+      }
     }
   }
 }

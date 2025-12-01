@@ -1,5 +1,5 @@
 <template>
-  <aside class="flex flex-col h-screen w-72 bg-[#041227] text-white shadow-xl">
+  <aside class="flex flex-col w-72 bg-[#041227] text-white shadow-xl">
     <!-- Branding -->
     <div class="flex items-center gap-3 px-5 py-4 border-b border-white/10">
       <div class="h-9 w-9 rounded-lg bg-white flex items-center justify-center">
