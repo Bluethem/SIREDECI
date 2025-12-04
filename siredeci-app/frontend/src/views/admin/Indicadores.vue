@@ -132,7 +132,7 @@ async function fetchIndicators() {
     if (query.value && query.value.trim()) params.q = query.value.trim()
     if (type.value && type.value !== 'all') params.type = type.value
     if (freq.value && freq.value !== 'all') params.freq = freq.value
-    const { data } = await axios.get('/api/reportes/indicators/', { params })
+    const { data } = await axios.get('/reportes/indicators/', { params })
     indicators.value = data.results || []
   } catch (e) {
     console.error('Error cargando indicadores', e)

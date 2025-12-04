@@ -39,11 +39,22 @@
           </div>
 
           <!-- Tabla de denuncias marcadas como duplicadas -->
-          <TablaDuplicadasVinculadas
-            :grupos="grupos"
-            @gestionar="gestionarVinculos"
-            @ver="abrirModal"
-          />
+          <div class="rounded-2xl border border-slate-200 bg-white shadow-sm" v-if="grupos.length">
+            <TablaDuplicadasVinculadas
+              :grupos="grupos"
+              @gestionar="gestionarVinculos"
+              @ver="abrirModal"
+            />
+          </div>
+          <div
+            v-else
+            class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 py-10 flex flex-col items-center justify-center text-xs text-slate-500 gap-2"
+          >
+            <span class="material-symbols-outlined text-[32px] text-slate-300">link_off</span>
+            <p class="max-w-md text-center">
+              Por el momento no se han detectado denuncias marcadas como duplicadas o vinculadas en tu área.
+            </p>
+          </div>
         </div>
       </section>
     </main>
@@ -60,28 +71,71 @@ import ModalGrupoVinculos from '@/components/ModalGrupoVinculos.vue'
 
 const grupos = ref([])
 
-const cargarDuplicadas = async () => {
+const cargarGruposDuplicadasVinculadas = async () => {
   try {
-    const response = await axios.get('/municipal/duplicadas/')
-    const data = Array.isArray(response.data) ? response.data : []
+    // Relaciones de vinculadas y listado de denuncias del área
+    const [resVinculadas, resDenunciasArea] = await Promise.all([
+      axios.get('/municipal/vinculadas/'),
+      axios.get('/municipal/mi-area/denuncias/')
+    ])
 
-    grupos.value = data.map((d) => ({
-      id: d.id_denuncia,
-      vinculos: 0,
-      area: d.categoria_nombre || 'Sin categoría',
-      fecha: d.fecha_registro ? d.fecha_registro.slice(0, 10) : '',
-      razon: 'Marcada como duplicada'
+    const dataVinculadas = Array.isArray(resVinculadas.data) ? resVinculadas.data : []
+    const dataArea = Array.isArray(resDenunciasArea.data) ? resDenunciasArea.data : []
+
+    // Mapa rápido id_denuncia -> info básica para área/fecha
+    const mapaDenuncias = new Map()
+    dataArea.forEach((d) => {
+      mapaDenuncias.set(d.id_denuncia, {
+        area: d.categoria_nombre || 'Sin categoría',
+        fecha: d.fecha_registro ? d.fecha_registro.slice(0, 10) : ''
+      })
+    })
+
+    // Agrupar por denuncia principal
+    const mapaGrupos = new Map()
+
+    dataVinculadas.forEach((rel) => {
+      if (!rel || typeof rel.id_principal !== 'number' || typeof rel.id_denuncia !== 'number') return
+
+      const principalId = rel.id_principal
+      const dupId = rel.id_denuncia
+
+      if (!mapaGrupos.has(principalId)) {
+        const infoPrincipal = mapaDenuncias.get(principalId) || {}
+        mapaGrupos.set(principalId, {
+          id: principalId,
+          idsVinculadas: [],
+          area: infoPrincipal.area || 'Sin categoría',
+          fecha: infoPrincipal.fecha || '',
+          razon: 'Marcada como duplicada'
+        })
+      }
+
+      const grupo = mapaGrupos.get(principalId)
+      if (!grupo.idsVinculadas.includes(dupId)) {
+        grupo.idsVinculadas.push(dupId)
+      }
+    })
+
+    grupos.value = Array.from(mapaGrupos.values()).map((g) => ({
+      id: g.id,
+      vinculos: g.idsVinculadas.length,
+      area: g.area,
+      fecha: g.fecha,
+      razon: g.razon,
+      idsVinculadas: g.idsVinculadas
     }))
   } catch (error) {
-    console.error('Error al cargar denuncias duplicadas:', error)
+    console.error('Error al cargar grupos de denuncias duplicadas/vinculadas:', error)
     grupos.value = []
   }
 }
 
-onMounted(cargarDuplicadas)
+onMounted(cargarGruposDuplicadasVinculadas)
 
 const gestionarVinculos = (grupo) => {
-  console.log('Gestionar vínculos para denuncia duplicada', grupo)
+  // Uso típico: abrir el mismo modal centrado en la acción de gestión de vínculos
+  abrirModal(grupo)
 }
 
 const modalAbierto = ref(false)

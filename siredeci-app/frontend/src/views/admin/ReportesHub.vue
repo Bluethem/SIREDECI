@@ -122,7 +122,7 @@ const ensureAuthHeader = () => {
 const fetchReportes = async () => {
   try {
     loading.value = true
-    const { data } = await axios.get('/api/reportes/reportes/')
+    const { data } = await axios.get('/reportes/reportes/')
     reportes.value = data.results || []
   } catch (e) {
     console.error('Error cargando historial de reportes', e)

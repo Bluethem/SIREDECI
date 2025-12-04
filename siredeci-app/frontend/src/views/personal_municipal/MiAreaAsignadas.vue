@@ -79,16 +79,25 @@ const prioridadFiltro = ref('')
 
 const cargarDenuncias = async () => {
   try {
-    // Denuncias asignadas al personal
-    const [resMisDenuncias, resDuplicadas] = await Promise.all([
+    // Denuncias asignadas al personal + duplicadas + vinculadas
+    const [resMisDenuncias, resDuplicadas, resVinculadas] = await Promise.all([
       axios.get('/municipal/mis-denuncias/'),
-      axios.get('/municipal/duplicadas/')
+      axios.get('/municipal/duplicadas/'),
+      axios.get('/municipal/vinculadas/')
     ])
 
     const data = Array.isArray(resMisDenuncias.data) ? resMisDenuncias.data : []
     const dataDuplicadas = Array.isArray(resDuplicadas.data) ? resDuplicadas.data : []
+    const dataVinculadas = Array.isArray(resVinculadas.data) ? resVinculadas.data : []
 
     const idsDuplicadas = new Set(dataDuplicadas.map((d) => d.id_denuncia))
+    const mapVinculadas = new Map()
+
+    dataVinculadas.forEach((rel) => {
+      if (rel && typeof rel.id_denuncia === 'number') {
+        mapVinculadas.set(rel.id_denuncia, rel.id_principal || null)
+      }
+    })
 
     denuncias.value = data.map((d) => ({
       id: d.id_denuncia,
@@ -99,8 +108,9 @@ const cargarDenuncias = async () => {
       estado: d.estado,
       // Marcamos duplicadas según backend
       duplicada: idsDuplicadas.has(d.id_denuncia),
-      // Por ahora no tenemos modelado explícito de vinculadas; se mantiene en false
-      vinculada: false
+      // Vinculada si backend devuelve relación; guardamos id de la principal
+      vinculada: mapVinculadas.has(d.id_denuncia),
+      idDenunciaPrincipal: mapVinculadas.get(d.id_denuncia) || null
     }))
   } catch (error) {
     console.error('Error al cargar denuncias asignadas o duplicadas:', error)

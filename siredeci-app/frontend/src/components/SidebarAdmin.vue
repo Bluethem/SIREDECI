@@ -129,7 +129,7 @@ const goTo = (path) => {
 
 const cargarUnreadNotificaciones = async () => {
   try {
-    const response = await axios.get('/api/notificaciones/usuario/')
+    const response = await axios.get('/notificaciones/usuario/')
     const items = response.data?.results || []
     unreadNotificaciones.value = items.filter((n) => n.estado_envio !== 'Leído').length
   } catch (error) {

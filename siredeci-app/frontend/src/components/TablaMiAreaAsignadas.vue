@@ -39,7 +39,13 @@
           </td>
           <td class="px-4 py-2 text-center">
             <span v-if="item.duplicada" class="text-amber-500 text-lg">⚠</span>
-            <span v-else-if="item.vinculada" class="text-slate-400 text-lg">🔗</span>
+            <span
+              v-else-if="item.vinculada"
+              class="text-slate-400 text-lg"
+              :title="item.idDenunciaPrincipal ? `Vinculada a #${item.idDenunciaPrincipal}` : 'Denuncia vinculada'"
+            >
+              🔗
+            </span>
           </td>
           <td class="px-4 py-2 text-center">
             <div class="inline-flex items-center gap-1">

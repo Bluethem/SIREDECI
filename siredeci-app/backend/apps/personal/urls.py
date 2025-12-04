@@ -18,6 +18,7 @@ urlpatterns = [
     path('municipal/dashboard/summary/', views.dashboard_area_summary, name='municipal-dashboard-summary'),
     path('municipal/dashboard/flujo/', views.dashboard_area_flujo, name='municipal-dashboard-flujo'),
     path('municipal/duplicadas/', views.denuncias_duplicadas_area, name='municipal-duplicadas'),
+    path('municipal/vinculadas/', views.denuncias_vinculadas_area, name='municipal-vinculadas'),
     path('', include(router.urls)),
 ]
 

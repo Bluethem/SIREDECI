@@ -468,7 +468,7 @@ export default {
         if (token) {
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
         }
-        const { data } = await axios.get('/api/reportes/dashboard/summary/', { params: buildParams() })
+        const { data } = await axios.get('/reportes/dashboard/summary/', { params: buildParams() })
 
         // Total denuncias
         const totalEl = document.getElementById('total-counter')
@@ -535,7 +535,7 @@ export default {
 
     const fetchCategorias = async () => {
       try {
-        const { data } = await axios.get('/api/reportes/dashboard/categorias/', { params: buildParams() })
+        const { data } = await axios.get('/reportes/dashboard/categorias/', { params: buildParams() })
         const cats = data.categorias || []
         const setCat = (idx, nombre, count, perc) => {
           const nameEl = document.getElementById(`cat${idx}-name`)
@@ -555,7 +555,7 @@ export default {
       try {
         const params = buildParams()
         params.granularity = this.temporalGranularity
-        const { data } = await axios.get('/api/reportes/dashboard/temporal/', { params })
+        const { data } = await axios.get('/reportes/dashboard/temporal/', { params })
         const series = data.series || []
         const labels = series.map(s => s.label)
         ;['temporal-l1', 'temporal-l2', 'temporal-l3', 'temporal-l4', 'temporal-l5'].forEach((id, idx) => {
@@ -569,7 +569,7 @@ export default {
 
     const fetchPrioridades = async () => {
       try {
-        const { data } = await axios.get('/api/reportes/dashboard/prioridades/', { params: buildParams() })
+        const { data } = await axios.get('/reportes/dashboard/prioridades/', { params: buildParams() })
         const series = data.series || []
         const setCol = (colIdx, baja, media, alta, urgente) => {
           const total = (baja + media + alta + urgente) || 1
@@ -595,7 +595,7 @@ export default {
 
     const fetchAlerts = async () => {
       try {
-        const { data } = await axios.get('/api/reportes/dashboard/alerts/', { params: buildParams() })
+        const { data } = await axios.get('/reportes/dashboard/alerts/', { params: buildParams() })
         const urg = document.getElementById('alert-urgentes')
         if (urg) urg.textContent = `${data.urgentes_sin_asignar || 0} denuncias requieren asignación inmediata.`
         const sla = document.getElementById('alert-sla')

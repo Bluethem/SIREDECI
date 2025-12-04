@@ -248,7 +248,7 @@ export default {
         this.loading = true
         const params = { limit: this.limit, offset: this.offset }
         if (this.query && this.query.trim()) params.q = this.query.trim() // future backend support
-        const { data } = await axios.get('/api/reportes/desempeno/ranking/', { params })
+        const { data } = await axios.get('/reportes/desempeno/ranking/', { params })
         this.total = data.count || 0
         // apply client-side filter by query until backend supports it
         let rows = data.results || []

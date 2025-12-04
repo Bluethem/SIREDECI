@@ -75,7 +75,7 @@
         <section class="rounded-2xl bg-white border border-slate-200 flex flex-col overflow-hidden">
           <header class="px-4 py-3 border-b border-slate-200 bg-slate-50">
             <h3 class="text-sm font-semibold text-slate-900">Denuncias Vinculadas (+{{ grupo.vinculos }})</h3>
-            <p class="text-[11px] text-slate-500">Seleccione una para comparar</p>
+            <p class="text-[11px] text-slate-500">Seleccione una para comparar y registrar su decisión.</p>
           </header>
           <div class="flex-1 overflow-y-auto py-2">
             <button
@@ -85,14 +85,28 @@
               :class="den.id === seleccionada?.id ? 'bg-sky-50 text-sky-800' : 'bg-white hover:bg-slate-50 text-slate-800'"
               @click="seleccionar(den)"
             >
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between gap-2">
                 <span class="font-semibold">ID-{{ den.id }}</span>
-                <span
-                  class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold border"
-                  :class="den.estado === 'Pendiente' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
-                >
-                  {{ den.estado }}
-                </span>
+                <div class="flex items-center gap-1">
+                  <span
+                    class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold border"
+                    :class="den.estado === 'Duplicada' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-700 border-slate-200'"
+                  >
+                    {{ den.estado }}
+                  </span>
+                  <span
+                    v-if="decisiones[den.id] === 'confirmado'"
+                    class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  >
+                    Confirmado
+                  </span>
+                  <span
+                    v-else-if="decisiones[den.id] === 'descartado'"
+                    class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200"
+                  >
+                    Descartado
+                  </span>
+                </div>
               </div>
               <p class="text-[11px] text-slate-500">Reportado: {{ den.hace }}</p>
             </button>
@@ -165,12 +179,16 @@
 
           <footer class="px-4 py-3 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
             <button
-              class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700"
+              class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              :disabled="!seleccionada"
+              @click="descartarVinculo"
             >
               DESCARTAR VÍNCULO
             </button>
             <button
-              class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700"
+              class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              :disabled="!seleccionada"
+              @click="confirmarVinculo"
             >
               CONFIRMAR DUPLICADO
             </button>
@@ -199,6 +217,7 @@ const props = defineProps({
 const denunciaPrimaria = ref(null)
 const denunciasVinculadas = ref([])
 const seleccionada = ref(null)
+const decisiones = ref({}) // id_denuncia -> 'confirmado' | 'descartado'
 
 const cargarDetalle = async () => {
   if (!props.grupo || !props.grupo.id) {
@@ -209,18 +228,51 @@ const cargarDetalle = async () => {
   }
 
   try {
-    const response = await axios.get(`/api/denuncias/${props.grupo.id}/`)
-    denunciaPrimaria.value = response.data || null
+    // Detalle de denuncia primaria
+    const resPrimaria = await axios.get(`/denuncias/${props.grupo.id}/`)
+    denunciaPrimaria.value = resPrimaria.data || null
 
-    // Por ahora no hay vínculos modelados en BD, así que usamos solo la denuncia primaria como referencia.
-    denunciasVinculadas.value = [
-      {
-        id: props.grupo.id,
-        estado: denunciaPrimaria.value?.estado || 'Pendiente',
-        hace: ''
-      }
-    ]
-    seleccionada.value = denunciasVinculadas.value[0]
+    const idsVinculadas = Array.isArray(props.grupo.idsVinculadas) ? props.grupo.idsVinculadas : []
+
+    if (!idsVinculadas.length) {
+      denunciasVinculadas.value = []
+      seleccionada.value = null
+      return
+    }
+
+    // Cargar detalles de cada denuncia vinculada
+    const respuestas = await Promise.all(
+      idsVinculadas.map((id) => axios.get(`/denuncias/${id}/`).catch(() => null))
+    )
+
+    const ahora = new Date()
+
+    denunciasVinculadas.value = respuestas
+      .map((res, idx) => {
+        const data = res?.data
+        const id = idsVinculadas[idx]
+        if (!data) return null
+
+        const fechaReg = data.fecha_registro ? new Date(data.fecha_registro) : null
+        let hace = ''
+        if (fechaReg && !isNaN(fechaReg.getTime())) {
+          const diffMs = ahora - fechaReg
+          const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+          hace = dias === 0 ? 'Hoy' : `Hace ${dias} día(s)`
+        }
+
+        return {
+          id,
+          estado: data.estado,
+          hace,
+          titulo: data.titulo,
+          descripcion: data.descripcion,
+          area: data.categoria?.nombre || 'Sin categoría'
+        }
+      })
+      .filter(Boolean)
+
+    seleccionada.value = denunciasVinculadas.value[0] || null
   } catch (error) {
     console.error('Error al cargar detalle de denuncia duplicada:', error)
     denunciaPrimaria.value = null
@@ -231,6 +283,22 @@ const cargarDetalle = async () => {
 
 const seleccionar = (den) => {
   seleccionada.value = den
+}
+
+const confirmarVinculo = () => {
+  if (!seleccionada.value) return
+  decisiones.value = {
+    ...decisiones.value,
+    [seleccionada.value.id]: 'confirmado'
+  }
+}
+
+const descartarVinculo = () => {
+  if (!seleccionada.value) return
+  decisiones.value = {
+    ...decisiones.value,
+    [seleccionada.value.id]: 'descartado'
+  }
 }
 
 watch(

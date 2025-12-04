@@ -270,7 +270,7 @@ const loadEstadisticas = async () => {
     const params = {}
     if (fromDate.value) params.from = fromDate.value
     if (toDate.value) params.to = toDate.value
-    const response = await axios.get('/api/public/estadisticas/denuncias-resumen/', { params })
+    const response = await axios.get('/public/reportes/estadisticas/denuncias-resumen/', { params })
     const data = response.data || {}
 
     const backendStats = data.stats || {}
@@ -302,7 +302,7 @@ const loadEstadisticas = async () => {
 
 const loadTendencias = async () => {
   try {
-    const response = await axios.get('/api/public/tendencias-geograficas/')
+    const response = await axios.get('/public/reportes/tendencias-geograficas/')
     const data = response.data || {}
     const results = data.results || []
 
@@ -319,7 +319,7 @@ const loadTendencias = async () => {
 
 const loadRankingAreas = async () => {
   try {
-    const response = await axios.get('/api/public/ranking-areas/')
+    const response = await axios.get('/public/reportes/ranking-areas/')
     const data = response.data || {}
     rankingAreas.value = data.results || []
   } catch (error) {

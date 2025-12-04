@@ -116,6 +116,7 @@
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from '@/stores/theme'
+import api from '@/services/api'
 import authService from '@/services/auth'
 
 const router = useRouter()
@@ -147,7 +148,7 @@ const cargarUnread = async () => {
       unreadCount.value = 0
       return
     }
-    const response = await axios.get('/api/ciudadanos/notificaciones/', {
+    const response = await api.get('/ciudadanos/notificaciones/', {
       params: { id_usuario: user.id_usuario }
     })
     const items = response.data?.results || []

@@ -426,6 +426,69 @@ def denuncias_duplicadas_area(request):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsStaffLike])
+def denuncias_vinculadas_area(request):
+    """Devuelve la relación de denuncias duplicadas con su denuncia principal vinculada.
+
+    GET /api/municipal/vinculadas/
+
+    Para cada denuncia cuya resolución final es 'Duplicada', se busca una denuncia
+    "principal" del mismo ciudadano y categoría (la más antigua distinta a ella).
+    Solo se consideran denuncias del área del personal autenticado.
+    """
+    user = request.user
+
+    personal = getattr(user, 'personal', None)
+    if personal is None or personal.estado_laboral != 'Activo':
+        return Response(
+            {
+                'error': 'Personal no válido',
+                'message': 'El usuario autenticado no tiene un registro de personal municipal activo.'
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    area = personal.id_area_responsable
+
+    # Resoluciones tipo 'Duplicada' de denuncias del área
+    resoluciones = (
+        Resolucion.objects
+        .select_related('id_tramitacion__id_asignacion__id_denuncia__id_categoria')
+        .filter(
+            tipo_resolucion='Duplicada',
+            id_tramitacion__id_asignacion__id_denuncia__id_categoria__id_area_responsable=area,
+        )
+    )
+
+    resultados = []
+
+    for res in resoluciones:
+        denuncia_dup = getattr(res.id_tramitacion.id_asignacion, 'id_denuncia', None)
+        if not denuncia_dup:
+            continue
+
+        # Buscar una denuncia "principal" candidata: mismo ciudadano y categoría,
+        # distinta a la duplicada, más antigua por fecha_registro.
+        qs_principal = Denuncia.objects.filter(
+            id_categoria=denuncia_dup.id_categoria,
+            id_ciudadano=denuncia_dup.id_ciudadano,
+        ).exclude(id_denuncia=denuncia_dup.id_denuncia).order_by('fecha_registro')
+
+        denuncia_principal = qs_principal.first()
+        if not denuncia_principal:
+            continue
+
+        resultados.append(
+            {
+                'id_denuncia': denuncia_dup.id_denuncia,
+                'id_principal': denuncia_principal.id_denuncia,
+            }
+        )
+
+    return Response(resultados, status=status.HTTP_200_OK)
+
+
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated, IsStaffLike])
 def cambiar_estado_mis_denuncias(request, id_denuncia: int):

@@ -265,7 +265,7 @@ export default {
       }
 
       axios
-        .post('/api/reportes/reportes/generar/', payload)
+        .post('/reportes/reportes/generar/', payload)
         .then((response) => {
           const data = response.data || {}
           this.generatedReportCode = data.codigo_reporte || null

@@ -373,7 +373,7 @@ const loadTendencias = async () => {
     if (baseParams.from || baseParams.to) {
       // Si se diera el caso de mapear el rango a un periodo_analisis textual, se podra hacer aqu.
     }
-    const { data } = await axios.get('/api/public/reportes/tendencias-geograficas/', { params })
+    const { data } = await axios.get('/public/reportes/tendencias-geograficas/', { params })
     tendencias.value = data.results || []
   } catch (e) {
     console.error('Error cargando tendencias geogrficas', e)
@@ -518,7 +518,7 @@ const renderPointsOnMap = (points) => {
 const loadGeoPoints = async () => {
   try {
     const params = buildParams()
-    const { data } = await axios.get('/api/reportes/geo/points/', { params })
+    const { data } = await axios.get('/reportes/geo/points/', { params })
     renderPointsOnMap(data.points || [])
   } catch (e) {
     console.error('Error cargando puntos geográficos', e)
@@ -571,7 +571,7 @@ const loadTopZonas = async () => {
     if (baseParams.from) params.from = baseParams.from
     if (baseParams.to) params.to = baseParams.to
 
-    const { data } = await axios.get('/api/reportes/geo/top-zonas/', { params })
+    const { data } = await axios.get('/reportes/geo/top-zonas/', { params })
     renderTopZonasChart(data.top_zonas || [])
   } catch (e) {
     console.error('Error cargando top de zonas', e)
@@ -660,7 +660,7 @@ const renderHeatmapChart = (labels, datasets) => {
 
 const loadEvolucion = async () => {
   try {
-    const { data } = await axios.get('/api/reportes/geo/evolucion/', {
+    const { data } = await axios.get('/reportes/geo/evolucion/', {
       params: { days: 7 }
     })
     const labels = data.labels || []

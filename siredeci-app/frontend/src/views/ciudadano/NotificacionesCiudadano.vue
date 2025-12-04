@@ -143,8 +143,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
 import NavbarCiudadano from '@/components/NavbarCiudadano.vue'
+import api from '@/services/api'
 import { authService } from '@/services/auth'
 
 const notificaciones = ref([])
@@ -165,7 +165,7 @@ const cargarNotificaciones = async () => {
       notificaciones.value = []
       return
     }
-    const response = await axios.get('/api/ciudadanos/notificaciones/', {
+    const response = await api.get('/ciudadanos/notificaciones/', {
       params: { id_usuario: user.id_usuario }
     })
     notificaciones.value = response.data?.results || []
@@ -182,7 +182,7 @@ const cargarConfig = async () => {
     const user = authService.getCurrentUser()
     if (!user || !user.id_usuario) return
 
-    const response = await axios.get('/api/ciudadanos/notificaciones/config/', {
+    const response = await api.get('/ciudadanos/notificaciones/config/', {
       params: { id_usuario: user.id_usuario }
     })
     config.value = {
@@ -203,8 +203,8 @@ const guardarConfig = async () => {
     const user = authService.getCurrentUser()
     if (!user || !user.id_usuario) return
 
-    await axios.put(
-      '/api/ciudadanos/notificaciones/config/',
+    await api.put(
+      '/ciudadanos/notificaciones/config/',
       {
         recibir_email: config.value.recibir_email,
         recibir_sms: config.value.recibir_sms,
@@ -228,7 +228,7 @@ const marcarLeida = async (n) => {
     const user = authService.getCurrentUser()
     if (!user || !user.id_usuario) return
 
-    await axios.post('/api/ciudadanos/notificaciones/marcar-leida/', {
+    await api.post('/ciudadanos/notificaciones/marcar-leida/', {
       id_notificacion: n.id_notificacion,
       id_usuario: user.id_usuario
     })

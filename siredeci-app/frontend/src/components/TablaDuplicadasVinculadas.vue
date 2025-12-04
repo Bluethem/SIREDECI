@@ -18,7 +18,7 @@
           class="hover:bg-slate-50"
         >
           <td class="px-4 py-2 text-sky-700 font-semibold">ID-{{ grupo.id }}</td>
-          <td class="px-4 py-2 text-slate-800">+{{ grupo.vinculos }} Vínculos</td>
+          <td class="px-4 py-2 text-slate-800">+{{ grupo.vinculos }} vínculo(s)</td>
           <td class="px-4 py-2 text-slate-700">{{ grupo.area }}</td>
           <td class="px-4 py-2 text-slate-700">{{ grupo.fecha }}</td>
           <td class="px-4 py-2">
@@ -28,21 +28,22 @@
               {{ grupo.razon }}
             </span>
           </td>
-          <td class="px-4 py-2 text-center">
-            <div class="inline-flex items-center gap-2">
+          <td class="px-4 py-2">
+            <div class="flex justify-center items-center gap-1">
               <button
-                class="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 border border-transparent focus:outline-none focus:ring-0"
+                class="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500"
                 @click="$emit('ver', grupo)"
                 title="Ver grupo"
               >
                 <span class="material-symbols-outlined text-[18px] leading-none">visibility</span>
               </button>
               <button
-                class="inline-flex items-center gap-1 rounded-full bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold px-3 py-1.5"
+                class="inline-flex items-center gap-1 rounded-full bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold px-3 py-1"
                 @click="$emit('gestionar', grupo)"
+                title="Revisar y gestionar vínculos de este grupo"
               >
                 <span class="material-symbols-outlined text-[16px] leading-none">link</span>
-                <span>Gestionar Vínculos</span>
+                <span>Gestionar vínculos</span>
               </button>
             </div>
           </td>
