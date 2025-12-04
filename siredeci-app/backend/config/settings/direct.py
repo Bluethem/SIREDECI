@@ -5,12 +5,21 @@ Solo para debugging
 """
 from pathlib import Path
 import os
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = 'django-insecure-change-this-in-production-12345678901234567890'
-DEBUG = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+# Valores leídos desde variables de entorno para facilitar el deploy (Render)
+# con defaults seguros para desarrollo local.
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-change-this-in-production-12345678901234567890',
+)
+
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+
+# Lista separada por comas en DJANGO_ALLOWED_HOSTS (ej: "localhost,127.0.0.1,siredeci-backend.onrender.com")
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # Custom User Model
 AUTH_USER_MODEL = 'usuarios.Usuario'
@@ -71,20 +80,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Configuración DIRECTA de la base de datos (sin decouple)
+# Base de datos: por defecto usa DATABASE_URL (ideal para Render). Si no existe,
+# cae en una configuración local de PostgreSQL.
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'siredecidb',  # Cambiado de siredeci_db a siredecidb
-        'USER': 'postgres',
-        'PASSWORD': 'admin',    # Cambiado de 12345 a admin
-        'HOST': 'localhost',    # Cambiado de 127.0.0.1 a localhost
-        'PORT': '5432',
-        'OPTIONS': {
-            'client_encoding': 'UTF8',
-        },
-        'CONN_MAX_AGE': 0,
-    }
+    'default': dj_database_url.config(
+        default=os.environ.get(
+            'DATABASE_URL',
+            'postgres://postgres:admin@localhost:5432/siredecidb',
+        ),
+        conn_max_age=600,
+    )
 }
 
 # Password validation
@@ -117,12 +122,10 @@ REST_FRAMEWORK = {
 }
 
 # CORS
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-]
+# En producción, configurar CORS_ALLOWED_ORIGINS con la URL de Vercel
+# (por ejemplo: https://tu-frontend.vercel.app)
+_default_cors = 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000'
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', _default_cors).split(',')
 CORS_ALLOW_CREDENTIALS = True
 
 # JWT Settings
