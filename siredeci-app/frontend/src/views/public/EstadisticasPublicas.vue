@@ -58,39 +58,6 @@
           </div>
         </div>
 
-        <!-- Ranking de Áreas -->
-        <div class="bg-white dark:bg-[#131b1f] dark:border dark:border-slate-800 shadow-lg rounded-xl p-6 mb-8">
-          <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary">leaderboard</span>
-            Ranking de Áreas Responsables
-          </h3>
-          <div class="space-y-3">
-            <div
-              v-for="(area, index) in rankingAreas"
-              :key="index"
-              class="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
-            >
-              <div class="flex items-center gap-3">
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-bold">
-                  {{ area.posicion }}
-                </span>
-                <div>
-                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ area.area }}</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">
-                    {{ area.periodo_evaluacion }} · {{ area.denuncias_atendidas }} denuncias atendidas
-                  </p>
-                </div>
-              </div>
-              <div class="text-right">
-                <p class="text-sm font-bold text-primary">{{ area.puntaje_total }} pts</p>
-                <p class="text-[11px] text-gray-500 dark:text-gray-400">
-                  {{ area.tasa_resolucion_area }}% resueltas · {{ area.tiempo_promedio_area }}h prom.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Resueltas -->
         <div class="bg-white dark:bg-[#131b1f] dark:border dark:border-slate-800 shadow-lg rounded-xl p-6">
           <div class="flex items-center justify-between">
@@ -182,21 +149,57 @@
         </div>
       </div>
 
-      <!-- Denuncias por Distrito -->
-      <div class="bg-white dark:bg-[#131b1f] dark:border dark:border-slate-800 shadow-lg rounded-xl p-6 mb-8">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary">location_on</span>
-          Denuncias por Distrito
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div v-for="(distrito, index) in distritos" :key="index" class="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-lg">
-            <div class="flex items-center justify-between mb-2">
-              <span class="font-semibold text-gray-900 dark:text-gray-100">{{ distrito.nombre }}</span>
-              <span class="text-sm font-bold text-primary">{{ distrito.cantidad }}</span>
+      <!-- Denuncias por Distrito + Ranking de Áreas -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Denuncias por Distrito -->
+        <div class="bg-white dark:bg-[#131b1f] dark:border dark:border-slate-800 shadow-lg rounded-xl p-6">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">location_on</span>
+            Denuncias por Distrito
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+            <div v-for="(distrito, index) in distritos" :key="index" class="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-lg">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-semibold text-gray-900 dark:text-gray-100">{{ distrito.nombre }}</span>
+                <span class="text-sm font-bold text-primary">{{ distrito.cantidad }}</span>
+              </div>
+              <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span class="material-symbols-outlined text-xs">trending_up</span>
+                <span>{{ distrito.tasa_resolucion }}% resueltas</span>
+              </div>
             </div>
-            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <span class="material-symbols-outlined text-xs">trending_up</span>
-              <span>{{ distrito.tasa_resolucion }}% resueltas</span>
+          </div>
+        </div>
+
+        <!-- Ranking de Áreas -->
+        <div class="bg-white dark:bg-[#131b1f] dark:border dark:border-slate-800 shadow-lg rounded-xl p-6">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">leaderboard</span>
+            Ranking de Áreas Responsables
+          </h3>
+          <div class="space-y-3">
+            <div
+              v-for="(area, index) in rankingAreas"
+              :key="index"
+              class="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
+            >
+              <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-bold">
+                  {{ area.posicion }}
+                </span>
+                <div>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ area.area }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ area.periodo_evaluacion }} · {{ area.denuncias_atendidas }} denuncias atendidas
+                  </p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="text-sm font-bold text-primary">{{ area.puntaje_total }} pts</p>
+                <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                  {{ area.tasa_resolucion_area }}% resueltas · {{ area.tiempo_promedio_area }}h prom.
+                </p>
+              </div>
             </div>
           </div>
         </div>
