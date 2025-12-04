@@ -23,6 +23,9 @@ from apps.reportes.models import (
     TendenciaGeografica,
     RankingDesempeno,
 )
+from apps.denuncias.models import Denuncia, Ubicacion
+from apps.personal.models import Tramitacion
+from apps.denuncias.models import Resolucion
 
 
 def _get_date_range_from_request(request):
@@ -1029,3 +1032,132 @@ def public_ranking_areas(request):
         })
 
     return Response({'results': results})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_estadisticas_denuncias_resumen(request):
+    """Resumen público de estadísticas de denuncias para la ciudadanía.
+
+    Devuelve un payload adaptado a la vista EstadisticasPublicas.vue:
+    - stats: total, resueltas, en_proceso, tiempo_promedio_horas
+    - categorias: top categorías con cantidad
+    - estados: conteo por estado
+    - distritos: conteo por distrito y tasa de resolución
+    """
+
+    # Base queryset de denuncias (todas las públicas del sistema)
+    denuncias_qs = Denuncia.objects.select_related('id_ubicacion', 'id_categoria')
+
+    # Filtro opcional por rango de fechas (fecha_registro)
+    from_date = request.GET.get('from')
+    to_date = request.GET.get('to')
+    if from_date:
+        denuncias_qs = denuncias_qs.filter(fecha_registro__date__gte=from_date)
+    if to_date:
+        denuncias_qs = denuncias_qs.filter(fecha_registro__date__lte=to_date)
+
+    total = denuncias_qs.count()
+
+    # Conteos por estado
+    por_estado = (
+        denuncias_qs.values('estado')
+        .annotate(cantidad=Count('id_denuncia'))
+        .order_by('estado')
+    )
+
+    resueltas = next((e['cantidad'] for e in por_estado if e['estado'] == 'Resuelta'), 0)
+    en_proceso = sum(
+        e['cantidad']
+        for e in por_estado
+        if e['estado'] in ['En proceso', 'Asignado', 'En revisión']
+    )
+
+    # Tiempo promedio de resolución (en horas) a partir de Resolucion
+    resoluciones_qs = Resolucion.objects.all()
+    if from_date:
+        resoluciones_qs = resoluciones_qs.filter(fecha_resolucion__date__gte=from_date)
+    if to_date:
+        resoluciones_qs = resoluciones_qs.filter(fecha_resolucion__date__lte=to_date)
+    tiempo_promedio = resoluciones_qs.aggregate(promedio=Avg('tiempo_total_horas'))['promedio'] or 0
+
+    # Top categorías por cantidad de denuncias
+    categorias_qs = (
+        denuncias_qs.values('id_categoria__nombre')
+        .annotate(cantidad=Count('id_denuncia'))
+        .order_by('-cantidad')[:5]
+    )
+
+    categorias_data = []
+    for cat in categorias_qs:
+        nombre = cat['id_categoria__nombre'] or 'Sin categoría'
+        cantidad = cat['cantidad']
+        porcentaje = (cantidad / total * 100) if total > 0 else 0
+        categorias_data.append({
+            'nombre': nombre,
+            'cantidad': cantidad,
+            'porcentaje': round(porcentaje, 1),
+        })
+
+    # Estados en formato sencillo para la UI
+    estados_data = [
+        {
+            'nombre': e['estado'],
+            'cantidad': e['cantidad'],
+        }
+        for e in por_estado
+    ]
+
+    # Denuncias por distrito
+    distritos_qs = (
+        denuncias_qs.values('id_ubicacion__distrito')
+        .annotate(
+            cantidad=Count('id_denuncia'),
+        )
+        .order_by('-cantidad')[:10]
+    )
+
+    # Para tasa de resolución por distrito usamos Resolucion + Tramitacion + Denuncia + Ubicacion
+    # Esta parte puede ser costosa, así que la mantenemos simple.
+    distritos_data = []
+    for d in distritos_qs:
+        nombre = d['id_ubicacion__distrito'] or 'Sin distrito'
+        cantidad = d['cantidad']
+
+        # Total denuncias del distrito
+        distrito_denuncias = denuncias_qs.filter(id_ubicacion__distrito=nombre)
+        total_distrito = distrito_denuncias.count()
+
+        # Denuncias resueltas en este distrito via Resolucion/Tramitacion
+        resueltas_distrito = (
+            Resolucion.objects
+            .filter(
+                id_tramitacion__id_asignacion__id_denuncia__in=distrito_denuncias,
+                tipo_resolucion='Resuelta',
+            )
+            .count()
+        )
+
+        tasa_resolucion = (
+            resueltas_distrito / total_distrito * 100 if total_distrito > 0 else 0
+        )
+
+        distritos_data.append({
+            'nombre': nombre,
+            'cantidad': cantidad,
+            'tasa_resolucion': round(tasa_resolucion, 1),
+        })
+
+    payload = {
+        'stats': {
+            'total': total,
+            'resueltas': resueltas,
+            'en_proceso': en_proceso,
+            'tiempo_promedio_horas': round(tiempo_promedio, 1) if tiempo_promedio else 0,
+        },
+        'categorias': categorias_data,
+        'estados': estados_data,
+        'distritos': distritos_data,
+    }
+
+    return Response(payload)

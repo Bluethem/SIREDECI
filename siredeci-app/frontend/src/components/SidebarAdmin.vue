@@ -41,7 +41,13 @@
         <span class="material-symbols-outlined text-[20px] leading-none">
           {{ item.icon }}
         </span>
-        <span class="truncate">{{ item.label }}</span>
+        <span class="truncate flex-1">{{ item.label }}</span>
+        <span
+          v-if="item.to === '/admin/notificaciones' && unreadNotificaciones > 0"
+          class="inline-flex items-center justify-center min-w-[18px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-semibold"
+        >
+          {{ unreadNotificaciones > 9 ? '9+' : unreadNotificaciones }}
+        </span>
       </button>
     </nav>
 
@@ -66,13 +72,15 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import { isSuperAdmin, isAdmin, isJefeArea, isAuditor } from '@/utils/roles'
 
 const router = useRouter()
 const route = useRoute()
+
+const unreadNotificaciones = ref(0)
 
 const user = computed(() => {
   try {
@@ -100,6 +108,7 @@ const menuItems = computed(() => [
   { to: '/admin/reportes', label: 'Reportes', icon: 'bar_chart', visible: isSuperAdmin() || isAdmin() || isJefeArea() || isAuditor() },
   { to: '/admin/desempeno', label: 'Desempeño', icon: 'leaderboard', visible: isSuperAdmin() || isAdmin() || isJefeArea() || isAuditor() },
   { to: '/admin/indicadores', label: 'Indicadores', icon: 'insights', visible: isSuperAdmin() || isAdmin() || isJefeArea() || isAuditor() },
+  { to: '/admin/notificaciones', label: 'Notificaciones', icon: 'notifications', visible: isSuperAdmin() || isAdmin() || isJefeArea() || isAuditor() },
 ])
 
 const visibleMenuItems = computed(() => menuItems.value.filter(m => m.visible))
@@ -117,6 +126,21 @@ const goTo = (path) => {
     router.push(path)
   }
 }
+
+const cargarUnreadNotificaciones = async () => {
+  try {
+    const response = await axios.get('/api/notificaciones/usuario/')
+    const items = response.data?.results || []
+    unreadNotificaciones.value = items.filter((n) => n.estado_envio !== 'Leído').length
+  } catch (error) {
+    console.error('Error al cargar contador de notificaciones internas (admin):', error)
+    unreadNotificaciones.value = 0
+  }
+}
+
+onMounted(() => {
+  cargarUnreadNotificaciones()
+})
 
 const logout = () => {
   localStorage.removeItem('access_token')

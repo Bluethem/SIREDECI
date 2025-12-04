@@ -25,20 +25,20 @@
           <!-- Tarjetas de métricas -->
           <div class="grid gap-4 md:grid-cols-3">
             <div class="rounded-2xl bg-white border border-slate-200 px-5 py-4 flex flex-col gap-1 shadow-sm">
-              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Total de Grupos Pendientes de Revisión</span>
-              <span class="text-3xl font-bold text-sky-600">15</span>
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Total de Denuncias Marcadas como Duplicadas</span>
+              <span class="text-3xl font-bold text-sky-600">{{ grupos.length }}</span>
             </div>
             <div class="rounded-2xl bg-white border border-slate-200 px-5 py-4 flex flex-col gap-1 shadow-sm">
-              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Grupos Resueltos (Últimos 30d)</span>
-              <span class="text-3xl font-bold text-emerald-600">42</span>
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Grupos Resueltos (UI demo)</span>
+              <span class="text-3xl font-bold text-emerald-600">-</span>
             </div>
             <div class="rounded-2xl bg-white border border-slate-200 px-5 py-4 flex flex-col gap-1 shadow-sm">
-              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Eficiencia de Detección</span>
-              <span class="text-3xl font-bold text-slate-900">92%</span>
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Eficiencia de Detección (UI demo)</span>
+              <span class="text-3xl font-bold text-slate-900">-</span>
             </div>
           </div>
 
-          <!-- Tabla de grupos duplicados/vinculados -->
+          <!-- Tabla de denuncias marcadas como duplicadas -->
           <TablaDuplicadasVinculadas
             :grupos="grupos"
             @gestionar="gestionarVinculos"
@@ -52,45 +52,36 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
 import SidebarMunicipal from '@/components/SidebarMunicipal.vue'
 import TablaDuplicadasVinculadas from '@/components/TablaDuplicadasVinculadas.vue'
 import ModalGrupoVinculos from '@/components/ModalGrupoVinculos.vue'
 
-const grupos = ref([
-  {
-    id: 98765,
-    vinculos: 3,
-    area: 'Fiscalización, Servicios Urbanos',
-    fecha: '2023-10-25',
-    razon: 'Misma Dirección y Asunto'
-  },
-  {
-    id: 98762,
-    vinculos: 2,
-    area: 'Obras Públicas',
-    fecha: '2023-10-24',
-    razon: 'Mismo Denunciante y Asunto'
-  },
-  {
-    id: 98755,
-    vinculos: 5,
-    area: 'Tránsito',
-    fecha: '2023-10-22',
-    razon: 'Misma Zona y Tipo de Incidencia'
-  },
-  {
-    id: 98741,
-    vinculos: 2,
-    area: 'Servicios Urbanos',
-    fecha: '2023-10-21',
-    razon: 'Misma Dirección'
+const grupos = ref([])
+
+const cargarDuplicadas = async () => {
+  try {
+    const response = await axios.get('/api/municipal/duplicadas/')
+    const data = Array.isArray(response.data) ? response.data : []
+
+    grupos.value = data.map((d) => ({
+      id: d.id_denuncia,
+      vinculos: 0,
+      area: d.categoria_nombre || 'Sin categoría',
+      fecha: d.fecha_registro ? d.fecha_registro.slice(0, 10) : '',
+      razon: 'Marcada como duplicada'
+    }))
+  } catch (error) {
+    console.error('Error al cargar denuncias duplicadas:', error)
+    grupos.value = []
   }
-])
+}
+
+onMounted(cargarDuplicadas)
 
 const gestionarVinculos = (grupo) => {
-  // Más adelante aquí se navegará a un page de gestión de vínculos para el grupo seleccionado
-  console.log('Gestionar vínculos para grupo', grupo)
+  console.log('Gestionar vínculos para denuncia duplicada', grupo)
 }
 
 const modalAbierto = ref(false)

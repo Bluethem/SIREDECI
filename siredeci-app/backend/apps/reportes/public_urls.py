@@ -20,4 +20,7 @@ urlpatterns = [
     # Tendencias geográficas y ranking de áreas
     path('tendencias-geograficas/', views.public_tendencias_geograficas, name='public-tendencias-geograficas'),
     path('ranking-areas/', views.public_ranking_areas, name='public-ranking-areas'),
+
+    # Resumen público de estadísticas de denuncias
+    path('estadisticas/denuncias-resumen/', views.public_estadisticas_denuncias_resumen, name='public-estadisticas-denuncias-resumen'),
 ]

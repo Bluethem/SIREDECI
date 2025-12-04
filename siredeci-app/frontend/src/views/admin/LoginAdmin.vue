@@ -79,6 +79,7 @@
 <script>
 import logo from '@/assets/logo.png'
 import axios from 'axios'
+import { getDefaultAdminRoute } from '@/utils/roles'
 
 export default {
   name: 'LoginAdmin',
@@ -113,8 +114,9 @@ export default {
         // Configurar el header de autorización para futuras peticiones
         axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`
 
-        // Redirigir al dashboard de admin
-        this.$router.push('/admin/dashboard').catch(() => {})
+        // Redirigir según rol por defecto (admin, jefe de área, operador, etc.)
+        const target = getDefaultAdminRoute() || '/admin/dashboard'
+        this.$router.push(target).catch(() => {})
         console.log('Login exitoso', response.data)
         
       } catch (error) {

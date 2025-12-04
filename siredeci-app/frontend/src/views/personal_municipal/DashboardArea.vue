@@ -23,23 +23,23 @@
           <!-- Tarjetas de métricas principales -->
           <div class="grid gap-4 md:grid-cols-4">
             <div class="rounded-2xl bg-white border border-slate-200 px-5 py-4 flex flex-col gap-1 shadow-sm">
-              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Total de Denuncias Asignadas</span>
-              <span class="text-3xl font-bold text-slate-900">185</span>
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Total de Denuncias del Área</span>
+              <span class="text-3xl font-bold text-slate-900">{{ totalDenuncias }}</span>
             </div>
 
             <div class="rounded-2xl bg-[#fff4f3] border border-[#ffd0c9] px-5 py-4 flex flex-col gap-1 shadow-sm">
-              <span class="text-xs font-medium text-rose-600 uppercase tracking-wide">Denuncias Venciendo Hoy/Mañana</span>
-              <span class="text-3xl font-bold text-rose-700">12</span>
+              <span class="text-xs font-medium text-rose-600 uppercase tracking-wide">Denuncias Críticas Abiertas</span>
+              <span class="text-3xl font-bold text-rose-700">{{ totalCriticas }}</span>
             </div>
 
             <div class="rounded-2xl bg-white border border-slate-200 px-5 py-4 flex flex-col gap-1 shadow-sm">
               <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Tasa de Resolución del Área</span>
-              <span class="text-3xl font-bold text-emerald-600">85%</span>
+              <span class="text-3xl font-bold text-emerald-600">{{ tasaResolucion }}%</span>
             </div>
 
             <div class="rounded-2xl bg-white border border-slate-200 px-5 py-4 flex flex-col gap-1 shadow-sm">
               <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Tiempo Promedio de Respuesta</span>
-              <span class="text-3xl font-bold text-sky-600">4.5 días</span>
+              <span class="text-3xl font-bold text-sky-600">{{ tiempoPromedio }} días</span>
             </div>
           </div>
 
@@ -53,7 +53,7 @@
                 <div class="relative flex items-center justify-center h-44 w-44">
                   <div class="absolute inset-0 rounded-full border-[12px] border-emerald-500 border-t-sky-500 border-r-amber-400 border-b-orange-500 opacity-80"></div>
                   <div class="h-24 w-24 rounded-full bg-slate-50 flex flex-col items-center justify-center">
-                    <span class="text-3xl font-bold text-slate-900">185</span>
+                    <span class="text-3xl font-bold text-slate-900">{{ totalDenuncias }}</span>
                     <span class="text-xs text-slate-500">Denuncias</span>
                   </div>
                 </div>
@@ -134,16 +134,89 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
 import SidebarMunicipal from '@/components/SidebarMunicipal.vue'
 
-const denunciasCriticas = ref([
-  { id: 7834, titulo: 'Poste de luz caído en Av. Principal', dias: 22, estado: 'Nueva' },
-  { id: 7855, titulo: 'Bache peligroso en calle San Martín', dias: 15, estado: 'En Proceso' },
-  { id: 7861, titulo: 'Fuga de agua en Plaza Central', dias: 11, estado: 'En Proceso' },
-  { id: 7800, titulo: 'Señalización en cruce peligroso', dias: 9, estado: 'Nueva' },
-  { id: 7892, titulo: 'Acumulación de basura en parque infantil', dias: 7, estado: 'Nueva' }
-])
+const resumen = ref(null)
+const denunciasArea = ref([])
+
+const cargarDashboard = async () => {
+  try {
+    const [resResumen, resDenuncias] = await Promise.all([
+      axios.get('/api/municipal/dashboard/summary/'),
+      axios.get('/api/municipal/mi-area/denuncias/')
+    ])
+
+    resumen.value = resResumen.data || null
+    const dataDen = Array.isArray(resDenuncias.data) ? resDenuncias.data : []
+    denunciasArea.value = dataDen
+  } catch (error) {
+    console.error('Error al cargar dashboard de área:', error)
+    resumen.value = null
+    denunciasArea.value = []
+  }
+}
+
+onMounted(cargarDashboard)
+
+const totalDenuncias = computed(() => {
+  if (resumen.value && typeof resumen.value.total_denuncias === 'number') {
+    return resumen.value.total_denuncias
+  }
+  return denunciasArea.value.length
+})
+
+const denunciasResueltas = computed(() =>
+  denunciasArea.value.filter((d) => d.estado === 'Resuelta')
+)
+
+const tasaResolucion = computed(() => {
+  if (!totalDenuncias.value) return 0
+  return Math.round((denunciasResueltas.value.length / totalDenuncias.value) * 100)
+})
+
+const tiempoPromedio = computed(() => {
+  if (!denunciasResueltas.value.length) return 0
+  const hoy = new Date()
+  const dias = denunciasResueltas.value
+    .map((d) => {
+      const f = d.fecha_registro ? new Date(d.fecha_registro) : null
+      if (!f || isNaN(f.getTime())) return 0
+      const diffMs = hoy - f
+      return diffMs / (1000 * 60 * 60 * 24)
+    })
+    .filter((n) => n >= 0)
+
+  if (!dias.length) return 0
+  const promedio = dias.reduce((a, b) => a + b, 0) / dias.length
+  return Number(promedio.toFixed(1))
+})
+
+const denunciasCriticas = computed(() => {
+  const hoy = new Date()
+  return denunciasArea.value
+    .map((d) => {
+      const f = d.fecha_registro ? new Date(d.fecha_registro) : null
+      const dias = f && !isNaN(f.getTime()) ? (hoy - f) / (1000 * 60 * 60 * 24) : 0
+      return {
+        id: d.id_denuncia,
+        titulo: d.titulo,
+        dias: Math.floor(dias),
+        estado: d.estado,
+        prioridad: d.prioridad
+      }
+    })
+    .filter((item) => {
+      const esAbierta = !['Resuelta', 'Rechazada', 'Cerrada'].includes(item.estado)
+      const esAlta = ['Alta', 'Urgente'].includes(item.prioridad)
+      return esAbierta && esAlta && item.dias >= 5
+    })
+    .sort((a, b) => b.dias - a.dias)
+    .slice(0, 10)
+})
+
+const totalCriticas = computed(() => denunciasCriticas.value.length)
 
 const estadoChipClass = (estado) => {
   switch (estado) {

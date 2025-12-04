@@ -12,7 +12,7 @@
             </div>
             <div class="rounded-2xl bg-white border border-slate-200 px-6 py-4 flex flex-col gap-1 shadow-sm min-w-[220px]">
               <span class="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Pendiente</span>
-              <span class="text-2xl font-bold text-slate-900">34 Denuncias</span>
+              <span class="text-2xl font-bold text-slate-900">{{ denunciasFiltradas.length }} Denuncias</span>
             </div>
           </div>
 
@@ -24,6 +24,7 @@
                 <input
                   type="text"
                   placeholder="Buscar por ID, Asunto, Dirección..."
+                  v-model="textoBusqueda"
                   class="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
                 />
               </div>
@@ -47,7 +48,7 @@
           </div>
 
           <!-- Tabla de denuncias pendientes -->
-          <TablaPendientesAsignar :items="denuncias" @ver-detalle="abrirDetalle" />
+          <TablaPendientesAsignar :items="denunciasFiltradas" @ver-detalle="abrirDetalle" />
         </div>
       </section>
     </main>
@@ -159,44 +160,46 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
 import SidebarMunicipal from '@/components/SidebarMunicipal.vue'
 import TablaPendientesAsignar from '@/components/TablaPendientesAsignar.vue'
 
-const denuncias = ref([
-  {
-    id: 1124,
-    asunto: 'Poste de luz caído',
-    fecha: '2024-05-20',
-    prioridad: 'alta',
-    ubicacion: 'Av. Siempreviva 742',
-    critica: true
-  },
-  {
-    id: 1123,
-    asunto: 'Bache peligroso en calzada',
-    fecha: '2024-05-19',
-    prioridad: 'alta',
-    ubicacion: 'Calle Falsa 123',
-    critica: true
-  },
-  {
-    id: 1122,
-    asunto: 'Ruidos molestos nocturnos',
-    fecha: '2024-05-19',
-    prioridad: 'media',
-    ubicacion: 'Plaza Central',
-    critica: false
-  },
-  {
-    id: 1121,
-    asunto: 'Acumulación de basura',
-    fecha: '2024-05-18',
-    prioridad: 'media',
-    ubicacion: 'Esquina de Rivadavia y San Martín',
-    critica: false
+const denuncias = ref([])
+const textoBusqueda = ref('')
+
+const cargarPendientes = async () => {
+  try {
+    const response = await axios.get('/api/municipal/pendientes-asignar/')
+    const data = Array.isArray(response.data) ? response.data : []
+
+    denuncias.value = data.map((d) => ({
+      id: d.id_denuncia,
+      asunto: d.titulo,
+      fecha: d.fecha_registro ? d.fecha_registro.slice(0, 10) : '',
+      prioridad: (d.prioridad || '').toLowerCase(),
+      ubicacion: d.direccion || d.distrito || 'Sin ubicación',
+      critica: d.prioridad === 'Urgente' || d.prioridad === 'Alta'
+    }))
+  } catch (error) {
+    console.error('Error al cargar denuncias pendientes de asignar:', error)
+    denuncias.value = []
   }
-])
+}
+
+onMounted(cargarPendientes)
+
+const denunciasFiltradas = computed(() => {
+  return denuncias.value.filter((d) => {
+    if (!textoBusqueda.value) return true
+    const q = textoBusqueda.value.toLowerCase()
+    return (
+      `${d.id}`.includes(q) ||
+      (d.asunto || '').toLowerCase().includes(q) ||
+      (d.ubicacion || '').toLowerCase().includes(q)
+    )
+  })
+})
 
 const detalleAbierto = ref(false)
 const denunciaSeleccionada = ref(null)

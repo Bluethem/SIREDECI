@@ -35,12 +35,21 @@
         </router-link>
       </nav>
       <div class="flex items-center gap-2 flex-shrink-0">
-        <button class="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+        <button
+          class="relative flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          @click="goToNotificaciones"
+        >
           <span class="material-symbols-outlined text-[20px] leading-none">notifications</span>
+          <span
+            v-if="unreadCount > 0"
+            class="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold"
+          >
+            {{ unreadCount > 9 ? '9+' : unreadCount }}
+          </span>
         </button>
         
         <!-- Settings dropdown with Dark Mode toggle -->
-        <div class="relative">
+        <div class="relative" ref="settingsRef">
           <button @click="toggleSettings"
                   class="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
             <span class="material-symbols-outlined text-[20px] leading-none">settings</span>
@@ -93,15 +102,18 @@
           </transition>
         </div>
         
-        <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 flex-shrink-0 ring-2 ring-white dark:ring-gray-700" 
-             style="background-image: url('https://ui-avatars.com/api/?name=Usuario&background=2e87ad&color=fff')"></div>
+        <div
+          class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 flex-shrink-0 ring-2 ring-white dark:ring-gray-700 cursor-pointer"
+          :style="avatarStyle"
+          @click="goToPerfil"
+        ></div>
       </div>
     </div>
   </header>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from '@/stores/theme'
 import authService from '@/services/auth'
@@ -109,6 +121,7 @@ import authService from '@/services/auth'
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
 const showSettings = ref(false)
+const unreadCount = ref(0)
 
 // Toggle del dropdown
 const toggleSettings = () => {
@@ -116,14 +129,38 @@ const toggleSettings = () => {
 }
 
 // Cerrar dropdown al hacer clic fuera
+const settingsRef = ref(null)
+
 const handleClickOutside = (event) => {
-  if (showSettings.value && !event.target.closest('.relative')) {
+  if (!showSettings.value) return
+
+  const el = settingsRef.value
+  if (el && !el.contains(event.target)) {
     showSettings.value = false
+  }
+}
+
+const cargarUnread = async () => {
+  try {
+    const user = authService.getCurrentUser()
+    if (!user || !user.id_usuario) {
+      unreadCount.value = 0
+      return
+    }
+    const response = await axios.get('/api/ciudadanos/notificaciones/', {
+      params: { id_usuario: user.id_usuario }
+    })
+    const items = response.data?.results || []
+    unreadCount.value = items.filter((n) => n.estado_envio !== 'Leído').length
+  } catch (error) {
+    console.error('Error al cargar contador de notificaciones de ciudadano:', error)
+    unreadCount.value = 0
   }
 }
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  cargarUnread()
 })
 
 onBeforeUnmount(() => {
@@ -134,6 +171,25 @@ const logout = () => {
   authService.logout()
   router.push('/ciudadano/login')
 }
+
+const goToNotificaciones = () => {
+  router.push({ name: 'ciudadano-notificaciones' })
+}
+
+const goToPerfil = () => {
+  router.push({ name: 'ciudadano-perfil' })
+}
+
+const avatarStyle = computed(() => {
+  const user = authService.getCurrentUser()
+  const name = encodeURIComponent(
+    user && (user.nombre || user.apellido)
+      ? `${user.nombre || ''} ${user.apellido || ''}`.trim()
+      : 'Usuario'
+  )
+  const url = `https://ui-avatars.com/api/?name=${name}&background=2e87ad&color=fff`
+  return `background-image: url('${url}')`
+})
 </script>
 
 <style scoped>

@@ -15,6 +15,34 @@
           </p>
         </header>
 
+        <!-- Filtros de fecha -->
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+          <div class="flex items-center gap-3 w-full md:w-auto">
+            <div class="flex flex-col text-sm text-gray-700 dark:text-gray-300">
+              <span class="font-medium mb-1">Rango de fechas</span>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input
+                  v-model="fromDate"
+                  type="date"
+                  class="border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100"
+                />
+                <input
+                  v-model="toDate"
+                  type="date"
+                  class="border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+            </div>
+          </div>
+          <button
+            @click="aplicarFiltros"
+            class="inline-flex items-center justify-center h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <span class="material-symbols-outlined text-sm mr-1">refresh</span>
+            Actualizar estadísticas
+          </button>
+        </div>
+
         <!-- Stats Overview Cards -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <!-- Total Denuncias -->
@@ -26,6 +54,39 @@
             </div>
             <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
               <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">description</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ranking de Áreas -->
+        <div class="bg-white dark:bg-[#131b1f] dark:border dark:border-slate-800 shadow-lg rounded-xl p-6 mb-8">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">leaderboard</span>
+            Ranking de Áreas Responsables
+          </h3>
+          <div class="space-y-3">
+            <div
+              v-for="(area, index) in rankingAreas"
+              :key="index"
+              class="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg"
+            >
+              <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-bold">
+                  {{ area.posicion }}
+                </span>
+                <div>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ area.area }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ area.periodo_evaluacion }} · {{ area.denuncias_atendidas }} denuncias atendidas
+                  </p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="text-sm font-bold text-primary">{{ area.puntaje_total }} pts</p>
+                <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                  {{ area.tasa_resolucion_area }}% resueltas · {{ area.tiempo_promedio_area }}h prom.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -166,45 +227,115 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 import NavbarPublico from '@/components/NavbarPublico.vue'
 
 const router = useRouter()
 
 const stats = ref({
-  total: 1245,
-  resueltas: 892,
-  enProceso: 285,
-  tiempoPromedio: 48
+  total: 0,
+  resueltas: 0,
+  enProceso: 0,
+  tiempoPromedio: 0
 })
 
-const categorias = ref([
-  { nombre: 'Infraestructura Vial', cantidad: 342, porcentaje: 27.5, color: '#3b82f6' },
-  { nombre: 'Alumbrado Público', cantidad: 287, porcentaje: 23.1, color: '#f59e0b' },
-  { nombre: 'Limpieza y Residuos', cantidad: 245, porcentaje: 19.7, color: '#10b981' },
-  { nombre: 'Seguridad Ciudadana', cantidad: 198, porcentaje: 15.9, color: '#ef4444' },
-  { nombre: 'Áreas Verdes', cantidad: 173, porcentaje: 13.9, color: '#8b5cf6' }
-])
+const categorias = ref([])
+const estados = ref([])
+const distritos = ref([])
+const rankingAreas = ref([])
 
-const estados = ref([
-  { nombre: 'Resueltas', cantidad: 892, color: '#10b981' },
-  { nombre: 'En Proceso', cantidad: 285, color: '#f59e0b' },
-  { nombre: 'En Revisión', cantidad: 52, color: '#3b82f6' },
-  { nombre: 'Rechazadas', cantidad: 16, color: '#ef4444' }
-])
+const fromDate = ref('')
+const toDate = ref('')
 
-const distritos = ref([
-  { nombre: 'Miraflores', cantidad: 256, tasa_resolucion: 75 },
-  { nombre: 'San Isidro', cantidad: 198, tasa_resolucion: 82 },
-  { nombre: 'Surco', cantidad: 234, tasa_resolucion: 68 },
-  { nombre: 'La Molina', cantidad: 187, tasa_resolucion: 71 },
-  { nombre: 'San Borja', cantidad: 165, tasa_resolucion: 79 },
-  { nombre: 'Barranco', cantidad: 205, tasa_resolucion: 73 }
-])
+const mapEstadoColor = (nombre) => {
+  const map = {
+    Resuelta: '#10b981',
+    'En proceso': '#f59e0b',
+    'En revisión': '#3b82f6',
+    Asignado: '#6366f1',
+    Registrado: '#6b7280',
+    Rechazada: '#ef4444',
+    Cerrada: '#0f766e'
+  }
+  return map[nombre] || '#6b7280'
+}
+
+const mapCategoriaColor = (index) => {
+  const palette = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6']
+  return palette[index % palette.length]
+}
+
+const loadEstadisticas = async () => {
+  try {
+    const params = {}
+    if (fromDate.value) params.from = fromDate.value
+    if (toDate.value) params.to = toDate.value
+    const response = await axios.get('/api/public/estadisticas/denuncias-resumen/', { params })
+    const data = response.data || {}
+
+    const backendStats = data.stats || {}
+    stats.value = {
+      total: backendStats.total || 0,
+      resueltas: backendStats.resueltas || 0,
+      enProceso: backendStats.en_proceso || 0,
+      tiempoPromedio: backendStats.tiempo_promedio_horas || 0
+    }
+
+    categorias.value = (data.categorias || []).map((cat, index) => ({
+      nombre: cat.nombre,
+      cantidad: cat.cantidad,
+      porcentaje: cat.porcentaje,
+      color: mapCategoriaColor(index)
+    }))
+
+    estados.value = (data.estados || []).map((e) => ({
+      nombre: e.nombre,
+      cantidad: e.cantidad,
+      color: mapEstadoColor(e.nombre)
+    }))
+
+    distritos.value = data.distritos || []
+  } catch (error) {
+    console.error('Error al cargar estadísticas públicas:', error)
+  }
+}
+
+const loadTendencias = async () => {
+  try {
+    const response = await axios.get('/api/public/tendencias-geograficas/')
+    const data = response.data || {}
+    const results = data.results || []
+
+    // Mapear TendenciaGeografica a la estructura usada en "Denuncias por Distrito"
+    distritos.value = results.map((t) => ({
+      nombre: t.distrito,
+      cantidad: t.cantidad_denuncias,
+      tasa_resolucion: t.tasa_resolucion
+    }))
+  } catch (error) {
+    console.error('Error al cargar tendencias geográficas:', error)
+  }
+}
+
+const loadRankingAreas = async () => {
+  try {
+    const response = await axios.get('/api/public/ranking-areas/')
+    const data = response.data || {}
+    rankingAreas.value = data.results || []
+  } catch (error) {
+    console.error('Error al cargar ranking de áreas:', error)
+  }
+}
 
 onMounted(() => {
-  // TODO: Cargar estadísticas desde el API
-  // loadEstadisticas()
+  loadEstadisticas()
+  loadTendencias()
+  loadRankingAreas()
 })
+
+const aplicarFiltros = () => {
+  loadEstadisticas()
+}
 
 const goToConsultaPublica = () => {
   router.push({ name: 'consulta-publica' })

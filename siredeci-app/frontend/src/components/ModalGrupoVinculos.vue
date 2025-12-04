@@ -46,9 +46,7 @@
             <section>
               <p class="font-medium text-slate-500 uppercase mb-0.5">Descripción</p>
               <p class="text-[13px] leading-relaxed">
-                Se reporta un bache de gran tamaño en la intersección de Av. Principal y Calle Secundaria que está causando
-                problemas de tráfico y daños a los vehículos. Ha estado presente por más de dos semanas y ha empeorado con las
-                lluvias recientes.
+                {{ denunciaPrimaria?.descripcion || 'Sin descripción disponible.' }}
               </p>
             </section>
 
@@ -63,9 +61,12 @@
 
             <section class="pb-2">
               <p class="font-medium text-slate-500 uppercase mb-1">Ubicación</p>
-              <div class="h-32 rounded-lg bg-slate-200 flex items-center justify-center text-[11px] text-slate-500">
-                Mapa pendiente
-              </div>
+              <p class="text-[13px] text-slate-700 mb-1">
+                {{ denunciaPrimaria?.ubicacion?.direccion || 'Dirección no disponible' }}
+              </p>
+              <p class="text-[11px] text-slate-500">
+                {{ denunciaPrimaria?.ubicacion?.distrito || '' }}
+              </p>
             </section>
           </div>
         </section>
@@ -118,15 +119,21 @@
               </div>
               <div>
                 <p class="font-medium text-slate-500 uppercase mb-0.5">Área</p>
-                <p class="text-[13px] text-slate-800">Tránsito</p>
+                <p class="text-[13px] text-slate-800">{{ seleccionada?.area || 'Tránsito' }}</p>
               </div>
             </div>
 
             <section>
+              <p class="font-medium text-slate-500 uppercase mb-0.5">Título</p>
+              <p class="text-[13px] leading-relaxed">
+                {{ seleccionada?.titulo || 'Sin título disponible.' }}
+              </p>
+            </section>
+
+            <section>
               <p class="font-medium text-slate-500 uppercase mb-0.5">Descripción</p>
               <p class="text-[13px] leading-relaxed">
-                Un cráter en la calle de Av. Principal está complicando la circulación. Los autos tienen que frenar de golpe.
-                Solicito reparación urgente.
+                {{ seleccionada?.descripcion || 'Sin descripción disponible.' }}
               </p>
             </section>
 
@@ -176,6 +183,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import axios from 'axios'
 
 const props = defineProps({
   open: {
@@ -188,13 +196,38 @@ const props = defineProps({
   }
 })
 
-const denunciasVinculadas = ref([
-  { id: 11223, estado: 'Pendiente', hace: '2 días' },
-  { id: 11224, estado: 'Pendiente', hace: '3 días' },
-  { id: 11225, estado: 'Vinculado', hace: '1 semana' }
-])
+const denunciaPrimaria = ref(null)
+const denunciasVinculadas = ref([])
+const seleccionada = ref(null)
 
-const seleccionada = ref(denunciasVinculadas.value[0])
+const cargarDetalle = async () => {
+  if (!props.grupo || !props.grupo.id) {
+    denunciaPrimaria.value = null
+    denunciasVinculadas.value = []
+    seleccionada.value = null
+    return
+  }
+
+  try {
+    const response = await axios.get(`/api/denuncias/${props.grupo.id}/`)
+    denunciaPrimaria.value = response.data || null
+
+    // Por ahora no hay vínculos modelados en BD, así que usamos solo la denuncia primaria como referencia.
+    denunciasVinculadas.value = [
+      {
+        id: props.grupo.id,
+        estado: denunciaPrimaria.value?.estado || 'Pendiente',
+        hace: ''
+      }
+    ]
+    seleccionada.value = denunciasVinculadas.value[0]
+  } catch (error) {
+    console.error('Error al cargar detalle de denuncia duplicada:', error)
+    denunciaPrimaria.value = null
+    denunciasVinculadas.value = []
+    seleccionada.value = null
+  }
+}
 
 const seleccionar = (den) => {
   seleccionada.value = den
@@ -204,7 +237,7 @@ watch(
   () => props.open,
   (nuevo) => {
     if (nuevo) {
-      seleccionada.value = denunciasVinculadas.value[0]
+      cargarDetalle()
     }
   }
 )

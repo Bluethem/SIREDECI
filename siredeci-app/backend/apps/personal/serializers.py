@@ -149,6 +149,26 @@ class PersonalMunicipalSerializer(serializers.ModelSerializer):
         ]
 
 
+class PersonalMunicipalAdminSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = PersonalMunicipal
+        fields = [
+            'id_personal',
+            'codigo_personal',
+            'dni',
+            'nombre',
+            'apellido',
+            'email',
+            'cargo',
+            'fecha_ingreso',
+            'estado_laboral',
+            'especialidad',
+            'id_area_responsable',
+            'id_usuario',
+        ]
+
+
 class LoginAdminResponseSerializer(serializers.Serializer):
     """
     Serializer para la respuesta del login

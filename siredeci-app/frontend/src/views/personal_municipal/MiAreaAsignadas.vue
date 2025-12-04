@@ -18,30 +18,41 @@
                 <input
                   type="text"
                   placeholder="Buscar por ID, asunto..."
+                  v-model="textoBusqueda"
                   class="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
                 />
               </div>
 
               <div class="flex items-center gap-3">
-                <button
+                <select
+                  v-model="estadoFiltro"
                   class="inline-flex items-center justify-between gap-2 min-w-[160px] px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  <span>Área Asignada</span>
-                  <span class="material-symbols-outlined text-[18px] leading-none">expand_more</span>
-                </button>
+                  <option value="">Todos los estados</option>
+                  <option
+                    v-for="estado in estadosDisponibles"
+                    :key="estado"
+                    :value="estado"
+                  >
+                    {{ estado }}
+                  </option>
+                </select>
 
-                <button
+                <select
+                  v-model="prioridadFiltro"
                   class="inline-flex items-center justify-between gap-2 min-w-[160px] px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  <span>Estado Actual</span>
-                  <span class="material-symbols-outlined text-[18px] leading-none">expand_more</span>
-                </button>
+                  <option value="">Todas las prioridades</option>
+                  <option value="alta">Alta</option>
+                  <option value="media">Media</option>
+                  <option value="baja">Baja</option>
+                </select>
               </div>
             </div>
           </div>
 
           <!-- Tabla de denuncias asignadas -->
-          <TablaMiAreaAsignadas :items="denuncias" @ver-detalle="irADetalle" />
+          <TablaMiAreaAsignadas :items="denunciasFiltradas" @ver-detalle="irADetalle" />
         </div>
       </section>
     </main>
@@ -49,65 +60,59 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 import SidebarMunicipal from '@/components/SidebarMunicipal.vue'
 import TablaMiAreaAsignadas from '@/components/TablaMiAreaAsignadas.vue'
 
 const router = useRouter()
 
-const denuncias = ref([
-  {
-    id: 84521,
-    asunto: 'Fuga de agua en vía pública',
-    area: 'Servicios Urbanos',
-    fecha: '2023-10-26',
-    prioridad: 'alta',
-    estado: 'En Proceso',
-    duplicada: true,
-    vinculada: false
-  },
-  {
-    id: 84520,
-    asunto: 'Construcción sin permiso',
-    area: 'Fiscalización',
-    fecha: '2023-10-25',
-    prioridad: 'media',
-    estado: 'Resuelta',
-    duplicada: false,
-    vinculada: false
-  },
-  {
-    id: 84519,
-    asunto: 'Poste de luz caído',
-    area: 'Obras Públicas',
-    fecha: '2023-10-25',
-    prioridad: 'alta',
-    estado: 'En Proceso',
-    duplicada: false,
-    vinculada: true
-  },
-  {
-    id: 84518,
-    asunto: 'Venta ambulante ilegal',
-    area: 'Fiscalización',
-    fecha: '2023-10-24',
-    prioridad: 'baja',
-    estado: 'Desestimada',
-    duplicada: false,
-    vinculada: false
-  },
-  {
-    id: 84517,
-    asunto: 'Acumulación de basura',
-    area: 'Servicios Urbanos',
-    fecha: '2023-10-23',
-    prioridad: 'media',
-    estado: 'Pendiente Revisión',
-    duplicada: false,
-    vinculada: false
+const denuncias = ref([])
+const textoBusqueda = ref('')
+const estadoFiltro = ref('')
+const prioridadFiltro = ref('')
+
+const cargarDenuncias = async () => {
+  try {
+    const response = await axios.get('/api/municipal/mis-denuncias/')
+    const data = Array.isArray(response.data) ? response.data : []
+
+    denuncias.value = data.map((d) => ({
+      id: d.id_denuncia,
+      asunto: d.titulo,
+      area: d.categoria_nombre || 'Sin categoría',
+      fecha: d.fecha_registro ? d.fecha_registro.slice(0, 10) : '',
+      prioridad: (d.prioridad || '').toLowerCase(),
+      estado: d.estado,
+      duplicada: false,
+      vinculada: false
+    }))
+  } catch (error) {
+    console.error('Error al cargar denuncias asignadas:', error)
+    denuncias.value = []
   }
-])
+}
+
+onMounted(cargarDenuncias)
+
+const estadosDisponibles = computed(() => {
+  const estados = new Set(denuncias.value.map((d) => d.estado).filter(Boolean))
+  return Array.from(estados)
+})
+
+const denunciasFiltradas = computed(() => {
+  return denuncias.value.filter((d) => {
+    const matchTexto = textoBusqueda.value
+      ? `${d.id} ${d.asunto}`.toLowerCase().includes(textoBusqueda.value.toLowerCase())
+      : true
+
+    const matchEstado = estadoFiltro.value ? d.estado === estadoFiltro.value : true
+    const matchPrioridad = prioridadFiltro.value ? d.prioridad === prioridadFiltro.value : true
+
+    return matchTexto && matchEstado && matchPrioridad
+  })
+})
 
 const irADetalle = (denuncia) => {
   router.push(`/municipal/mi-area/${denuncia.id}`)

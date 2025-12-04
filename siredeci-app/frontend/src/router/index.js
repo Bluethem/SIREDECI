@@ -47,6 +47,12 @@ const routes = [
     meta: { requiresAdmin: true, allowedRoles: ['ROL-001', 'ROL-002', 'ROL-003', 'ROL-004', 'ROL-006'] }
   },
   {
+    path: '/admin/notificaciones',
+    name: 'admin-notificaciones',
+    component: () => import('../views/admin/NotificacionesAdmin.vue'),
+    meta: { requiresAdmin: true, allowedRoles: ['ROL-001', 'ROL-002', 'ROL-003', 'ROL-004', 'ROL-006'] }
+  },
+  {
     path: '/admin/reportes',
     name: 'admin-reportes',
     component: () => import('../views/admin/ReportesHub.vue'),
@@ -74,31 +80,43 @@ const routes = [
     path: '/municipal/dashboard',
     name: 'municipal-dashboard',
     component: () => import('../views/personal_municipal/DashboardArea.vue'),
-    meta: { requiresAdmin: true }
+    meta: { requiresAdmin: true, allowedRoles: ['ROL-001', 'ROL-002', 'ROL-003', 'ROL-004'] }
   },
   {
     path: '/municipal/mi-area',
     name: 'municipal-mi-area',
     component: () => import('../views/personal_municipal/MiAreaAsignadas.vue'),
-    meta: { requiresAdmin: true }
+    meta: { requiresAdmin: true, allowedRoles: ['ROL-003', 'ROL-004', 'ROL-001', 'ROL-002'] }
   },
   {
     path: '/municipal/mi-area/:id',
     name: 'municipal-detalle-asignada',
     component: () => import('../views/personal_municipal/DetalleDenunciaAsignada.vue'),
-    meta: { requiresAdmin: true }
+    meta: { requiresAdmin: true, allowedRoles: ['ROL-003', 'ROL-004', 'ROL-001', 'ROL-002'] }
   },
   {
     path: '/municipal/pendientes-asignar',
     name: 'municipal-pendientes-asignar',
     component: () => import('../views/personal_municipal/PendientesAsignar.vue'),
-    meta: { requiresAdmin: true }
+    meta: { requiresAdmin: true, allowedRoles: ['ROL-003', 'ROL-001', 'ROL-002'] }
   },
   {
     path: '/municipal/duplicadas',
     name: 'municipal-duplicadas-vinculadas',
     component: () => import('../views/personal_municipal/DuplicadasVinculadas.vue'),
-    meta: { requiresAdmin: true }
+    meta: { requiresAdmin: true, allowedRoles: ['ROL-003', 'ROL-004', 'ROL-001', 'ROL-002'] }
+  },
+  {
+    path: '/municipal/notificaciones',
+    name: 'municipal-notificaciones',
+    component: () => import('../views/personal_municipal/NotificacionesMunicipal.vue'),
+    meta: { requiresAdmin: true, allowedRoles: ['ROL-001', 'ROL-002', 'ROL-003', 'ROL-004'] }
+  },
+  {
+    path: '/municipal/perfil',
+    name: 'municipal-perfil',
+    component: () => import('../views/personal_municipal/PerfilMunicipal.vue'),
+    meta: { requiresAdmin: true, allowedRoles: ['ROL-001', 'ROL-002', 'ROL-003', 'ROL-004'] }
   },
   {
     path: '/ciudadano/login',
@@ -109,6 +127,18 @@ const routes = [
     path: '/ciudadano/dashboard',
     name: 'ciudadano-dashboard',
     component: () => import('../views/ciudadano/DashboardCiudadano.vue'),
+    meta: { requiresCiudadano: true }
+  },
+  {
+    path: '/ciudadano/perfil',
+    name: 'ciudadano-perfil',
+    component: () => import('../views/ciudadano/PerfilCiudadano.vue'),
+    meta: { requiresCiudadano: true }
+  },
+  {
+    path: '/ciudadano/notificaciones',
+    name: 'ciudadano-notificaciones',
+    component: () => import('../views/ciudadano/NotificacionesCiudadano.vue'),
     meta: { requiresCiudadano: true }
   },
   {
