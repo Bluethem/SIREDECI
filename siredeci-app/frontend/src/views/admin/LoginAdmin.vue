@@ -100,7 +100,7 @@ export default {
       this.error = ''
 
       try {
-        const response = await axios.post('/api/admin/login/', {
+        const response = await axios.post('/admin/login/', {
           email: this.form.email,
           password: this.form.password
         })

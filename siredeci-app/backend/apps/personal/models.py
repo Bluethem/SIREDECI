@@ -74,17 +74,19 @@ class PersonalMunicipal(models.Model):
         AreaResponsable,
         on_delete=models.PROTECT,
         related_name='personal',
-        verbose_name='Área Responsable'
+        verbose_name='Área Responsable',
+        db_column='id_area_responsable'
     )
     id_usuario = models.OneToOneField(
         Usuario,
         on_delete=models.PROTECT,
         related_name='personal',
-        verbose_name='Usuario'
+        verbose_name='Usuario',
+        db_column='id_usuario'
     )
     
     class Meta:
-        db_table = 'personal_municipal'
+        db_table = 'personalmunicipal'
         verbose_name = 'Personal Municipal'
         verbose_name_plural = 'Personal Municipal'
         indexes = [

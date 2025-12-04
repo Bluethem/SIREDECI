@@ -211,19 +211,22 @@ class Notificacion(models.Model):
         Denuncia,
         on_delete=models.CASCADE,
         related_name='notificaciones',
-        verbose_name='Denuncia'
+        verbose_name='Denuncia',
+        db_column='id_denuncia'
     )
     id_usuario = models.ForeignKey(
         Usuario,
         on_delete=models.PROTECT,
         related_name='notificaciones',
-        verbose_name='Usuario'
+        verbose_name='Usuario',
+        db_column='id_usuario'
     )
     id_plantilla = models.ForeignKey(
         PlantillaNotificacion,
         on_delete=models.PROTECT,
         related_name='notificaciones',
-        verbose_name='Plantilla'
+        verbose_name='Plantilla',
+        db_column='id_plantilla'
     )
     
     class Meta:

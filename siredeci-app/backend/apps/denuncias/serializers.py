@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Denuncia, Ubicacion, Evidencia
+from .models import Denuncia, Ubicacion, Evidencia, Seguimiento
 from apps.categorias.models import Categoria
 from apps.ciudadanos.models import Ciudadano
 
@@ -28,9 +28,21 @@ class EvidenciaSerializer(serializers.ModelSerializer):
         fields = [
             'id_evidencia', 'codigo_evidencia', 'nombre_archivo',
             'ruta_almacenamiento', 'tipo_archivo', 'tamaño_bytes',
-            'fecha_carga', 'descripcion'
+            'fecha_carga'
         ]
         read_only_fields = ['id_evidencia', 'codigo_evidencia', 'fecha_carga']
+
+
+class SeguimientoSerializer(serializers.ModelSerializer):
+    """Serializer para el modelo Seguimiento (historial de la denuncia)"""
+
+    class Meta:
+        model = Seguimiento
+        fields = [
+            'id_seguimiento', 'codigo_seguimiento', 'estado_anterior', 'estado_nuevo',
+            'fecha_hora', 'comentario', 'es_visible'
+        ]
+        read_only_fields = ['id_seguimiento', 'codigo_seguimiento', 'fecha_hora']
 
 
 class DenunciaListSerializer(serializers.ModelSerializer):
@@ -56,6 +68,7 @@ class DenunciaDetailSerializer(serializers.ModelSerializer):
     
     ubicacion = UbicacionSerializer(source='id_ubicacion', read_only=True)
     evidencias = EvidenciaSerializer(many=True, read_only=True)
+    seguimientos = SeguimientoSerializer(many=True, read_only=True)
     categoria = serializers.SerializerMethodField()
     ciudadano = serializers.SerializerMethodField()
     
@@ -65,7 +78,7 @@ class DenunciaDetailSerializer(serializers.ModelSerializer):
             'id_denuncia', 'codigo_denuncia', 'titulo', 'descripcion',
             'fecha_registro', 'fecha_actualizacion', 'estado', 'prioridad',
             'es_anonima', 'numero_seguimiento', 'requiere_validacion',
-            'categoria', 'ubicacion', 'evidencias', 'ciudadano'
+            'categoria', 'ubicacion', 'evidencias', 'seguimientos', 'ciudadano'
         ]
     
     def get_categoria(self, obj):
@@ -171,10 +184,12 @@ class DenunciaUpdateSerializer(serializers.ModelSerializer):
         if instance:
             # Definir transiciones válidas
             transiciones_validas = {
-                'Registrado': ['En revisión', 'Rechazada'],
+                # Desde registrado permitimos pasar a revisión, asignado o rechazado
+                'Registrado': ['En revisión', 'Asignado', 'Rechazada'],
                 'En revisión': ['Asignado', 'Rechazada'],
                 'Asignado': ['En proceso', 'Rechazada'],
-                'En proceso': ['Resuelta', 'Rechazada'],
+                # Desde "En proceso" se permite pasar a "Resuelta", "Rechazada" o cerrar directamente
+                'En proceso': ['Resuelta', 'Rechazada', 'Cerrada'],
                 'Resuelta': ['Cerrada'],
                 'Rechazada': [],
                 'Cerrada': []

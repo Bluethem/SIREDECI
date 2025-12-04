@@ -52,7 +52,11 @@
           </div>
 
           <!-- Tabla de denuncias asignadas -->
-          <TablaMiAreaAsignadas :items="denunciasFiltradas" @ver-detalle="irADetalle" />
+          <TablaMiAreaAsignadas
+            :items="denunciasFiltradas"
+            @ver-detalle="irADetalle"
+            @cambiar-estado="cambiarEstadoDenuncia"
+          />
         </div>
       </section>
     </main>
@@ -75,8 +79,16 @@ const prioridadFiltro = ref('')
 
 const cargarDenuncias = async () => {
   try {
-    const response = await axios.get('/api/municipal/mis-denuncias/')
-    const data = Array.isArray(response.data) ? response.data : []
+    // Denuncias asignadas al personal
+    const [resMisDenuncias, resDuplicadas] = await Promise.all([
+      axios.get('/municipal/mis-denuncias/'),
+      axios.get('/municipal/duplicadas/')
+    ])
+
+    const data = Array.isArray(resMisDenuncias.data) ? resMisDenuncias.data : []
+    const dataDuplicadas = Array.isArray(resDuplicadas.data) ? resDuplicadas.data : []
+
+    const idsDuplicadas = new Set(dataDuplicadas.map((d) => d.id_denuncia))
 
     denuncias.value = data.map((d) => ({
       id: d.id_denuncia,
@@ -85,11 +97,13 @@ const cargarDenuncias = async () => {
       fecha: d.fecha_registro ? d.fecha_registro.slice(0, 10) : '',
       prioridad: (d.prioridad || '').toLowerCase(),
       estado: d.estado,
-      duplicada: false,
+      // Marcamos duplicadas según backend
+      duplicada: idsDuplicadas.has(d.id_denuncia),
+      // Por ahora no tenemos modelado explícito de vinculadas; se mantiene en false
       vinculada: false
     }))
   } catch (error) {
-    console.error('Error al cargar denuncias asignadas:', error)
+    console.error('Error al cargar denuncias asignadas o duplicadas:', error)
     denuncias.value = []
   }
 }
@@ -116,6 +130,22 @@ const denunciasFiltradas = computed(() => {
 
 const irADetalle = (denuncia) => {
   router.push(`/municipal/mi-area/${denuncia.id}`)
+}
+
+const cambiarEstadoDenuncia = async ({ id, nuevoEstado }) => {
+  try {
+    await axios.patch(`/municipal/mis-denuncias/${id}/cambiar-estado/`, {
+      estado: nuevoEstado
+    })
+
+    denuncias.value = denuncias.value.map((d) =>
+      d.id === id
+        ? { ...d, estado: nuevoEstado }
+        : d
+    )
+  } catch (error) {
+    console.error('Error al cambiar estado de denuncia asignada:', error)
+  }
 }
 </script>
 

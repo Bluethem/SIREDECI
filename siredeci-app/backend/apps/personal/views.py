@@ -4,6 +4,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django_filters.rest_framework import DjangoFilterBackend
+from django.utils import timezone
+from django.db.models.functions import TruncDate
+from django.db.models import Count
 from apps.personal.serializers import (
     LoginAdminSerializer,
     PersonalMunicipalSerializer,
@@ -13,8 +16,10 @@ from apps.personal.models import PersonalMunicipal, Asignacion
 from apps.usuarios.models import Usuario
 from apps.usuarios.utils import get_codigos_roles, get_codigos_permisos
 from apps.usuarios.permissions import IsStaffLike
-from apps.denuncias.models import Denuncia, Resolucion
-from apps.denuncias.serializers import DenunciaListSerializer
+from django.shortcuts import get_object_or_404
+from apps.denuncias.models import Denuncia, Resolucion, Seguimiento
+from apps.categorias.models import AreaResponsable
+from apps.denuncias.serializers import DenunciaListSerializer, DenunciaUpdateSerializer
 
 
 @api_view(['POST'])
@@ -156,6 +161,77 @@ def pendientes_asignar_area(request):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsStaffLike])
+def asignar_denuncia_pendiente(request, id_denuncia: int):
+    """Asigna una denuncia pendiente al personal municipal autenticado.
+
+    POST /api/municipal/pendientes-asignar/<id_denuncia>/asignar/
+
+    - Verifica que la denuncia pertenece al área del personal.
+    - Verifica que no tenga una asignación activa.
+    - Crea una Asignacion con id_personal_asignado = personal autenticado.
+    - Opcionalmente actualiza el estado a 'Asignado' si no lo está.
+    """
+    user = request.user
+
+    personal = getattr(user, 'personal', None)
+    if personal is None or personal.estado_laboral != 'Activo':
+        return Response(
+            {
+                'error': 'Personal no válido',
+                'message': 'El usuario autenticado no tiene un registro de personal municipal activo.'
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    area = personal.id_area_responsable
+
+    denuncia = get_object_or_404(
+        Denuncia.objects.select_related('id_categoria'),
+        id_denuncia=id_denuncia,
+        id_categoria__id_area_responsable=area,
+    )
+
+    # Verificar que no exista asignación activa
+    if Asignacion.objects.filter(id_denuncia=denuncia, es_activa=True).exists():
+        return Response(
+            {
+                'error': 'Ya asignada',
+                'message': 'La denuncia ya cuenta con una asignación activa.'
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Crear asignación
+    motivo = request.data.get('motivo', '')
+    asignacion = Asignacion.objects.create(
+        motivo_asignacion=motivo,
+        id_denuncia=denuncia,
+        id_personal_asignado=personal,
+        id_personal_asignador=personal,
+    )
+
+    # Actualizar estado a 'Asignado' si corresponde
+    if denuncia.estado != 'Asignado':
+        try:
+            serializer = DenunciaUpdateSerializer(denuncia, data={'estado': 'Asignado'}, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        except Exception:
+            # Si por alguna razón la transición no es válida, dejamos el estado como está
+            pass
+
+    return Response(
+        {
+            'mensaje': 'Denuncia asignada correctamente',
+            'id_denuncia': denuncia.id_denuncia,
+            'codigo_asignacion': asignacion.codigo_asignacion,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsStaffLike])
 def denuncias_area_personal(request):
@@ -237,6 +313,77 @@ def dashboard_area_summary(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsStaffLike])
+def dashboard_area_flujo(request):
+    """Flujo operativo de denuncias del área en los últimos 30 días.
+
+    GET /api/municipal/dashboard/flujo/
+    """
+    user = request.user
+
+    personal = getattr(user, 'personal', None)
+    if personal is None or personal.estado_laboral != 'Activo':
+        return Response(
+            {
+                'error': 'Personal no válido',
+                'message': 'El usuario autenticado no tiene un registro de personal municipal activo.'
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    area = personal.id_area_responsable
+
+    hoy = timezone.now().date()
+    hace_30 = hoy - timezone.timedelta(days=29)
+
+    qs = (
+        Denuncia.objects
+        .filter(
+            id_categoria__id_area_responsable=area,
+            fecha_registro__date__gte=hace_30,
+            fecha_registro__date__lte=hoy,
+        )
+    )
+
+    agrupado = (
+        qs.annotate(dia=TruncDate('fecha_registro'))
+        .values('dia', 'estado')
+        .annotate(total=Count('id_denuncia'))
+        .order_by('dia')
+    )
+
+    # Reorganizar a estructura por día
+    dias_map = {}
+    for fila in agrupado:
+        dia = fila['dia']
+        estado = fila['estado']
+        total = fila['total']
+        if dia not in dias_map:
+            dias_map[dia] = {
+                'fecha': dia.isoformat(),
+                'total': 0,
+                'por_estado': {},
+            }
+        dias_map[dia]['total'] += total
+        dias_map[dia]['por_estado'][estado] = total
+
+    # Asegurar que todos los días del rango estén presentes (aunque sea con total 0)
+    resultado = []
+    for i in range(30):
+        dia = hace_30 + timezone.timedelta(days=i)
+        if dia in dias_map:
+            resultado.append(dias_map[dia])
+        else:
+            resultado.append({
+                'fecha': dia.isoformat(),
+                'total': 0,
+                'por_estado': {},
+            })
+
+    return Response(resultado, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsStaffLike])
 def denuncias_duplicadas_area(request):
     """Denuncias del área cuya resolución final es de tipo 'Duplicada'.
 
@@ -277,3 +424,180 @@ def denuncias_duplicadas_area(request):
 
     serializer = DenunciaListSerializer(denuncias_set, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated, IsStaffLike])
+def cambiar_estado_mis_denuncias(request, id_denuncia: int):
+    """Permite al personal cambiar el estado de una denuncia que tiene asignada.
+
+    PATCH /api/municipal/mis-denuncias/<id_denuncia>/cambiar-estado/
+    Body JSON: {"estado": "En proceso" | "Resuelta" | ...}
+    """
+    user = request.user
+
+    personal = getattr(user, 'personal', None)
+    if personal is None or personal.estado_laboral != 'Activo':
+        return Response(
+            {
+                'error': 'Personal no válido',
+                'message': 'El usuario autenticado no tiene un registro de personal municipal activo.'
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    denuncia = get_object_or_404(Denuncia, id_denuncia=id_denuncia)
+
+    # Verificar que exista una asignación activa de esa denuncia al personal
+    tiene_asignacion = Asignacion.objects.filter(
+        id_denuncia=denuncia,
+        id_personal_asignado=personal,
+        es_activa=True,
+    ).exists()
+
+    if not tiene_asignacion:
+        return Response(
+            {
+                'error': 'Sin permiso sobre la denuncia',
+                'message': 'La denuncia no está asignada actualmente al personal autenticado.'
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    nuevo_estado = request.data.get('estado')
+    if not nuevo_estado:
+        return Response(
+            {'error': 'Estado requerido', 'message': 'Debe especificar el nuevo estado.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    estado_anterior = denuncia.estado
+
+    serializer = DenunciaUpdateSerializer(denuncia, data={'estado': nuevo_estado}, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+
+    # Registrar seguimiento del cambio de estado
+    try:
+      Seguimiento.objects.create(
+          estado_anterior=estado_anterior,
+          estado_nuevo=denuncia.estado,
+          comentario=request.data.get('comentario', ''),
+          id_denuncia=denuncia,
+          id_usuario=user,
+      )
+    except Exception:
+      # No bloquear el flujo si falla el registro de seguimiento
+      pass
+
+    return Response({'id_denuncia': denuncia.id_denuncia, 'estado': denuncia.estado}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsStaffLike])
+def reasignar_denuncia_area(request, id_denuncia: int):
+    """Reasigna una denuncia a otra área responsable creando una nueva asignación.
+
+    POST /api/municipal/mis-denuncias/<id_denuncia>/reasignar-area/
+
+    Body JSON: {
+      "area_destino": "Nombre del área destino",
+      "motivo": "Texto opcional"
+    }
+    """
+    user = request.user
+
+    personal = getattr(user, 'personal', None)
+    if personal is None or personal.estado_laboral != 'Activo':
+        return Response(
+            {
+                'error': 'Personal no válido',
+                'message': 'El usuario autenticado no tiene un registro de personal municipal activo.'
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    denuncia = get_object_or_404(Denuncia, id_denuncia=id_denuncia)
+
+    # Asignación activa actual del personal autenticado
+    asignacion_actual = (
+        Asignacion.objects
+        .select_related('id_personal_asignado__id_area_responsable')
+        .filter(id_denuncia=denuncia, es_activa=True)
+        .first()
+    )
+
+    if asignacion_actual is None:
+        return Response(
+            {
+                'error': 'Sin asignación activa',
+                'message': 'La denuncia no tiene una asignación activa que pueda reasignarse.'
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    area_destino_nombre = request.data.get('area_destino')
+    if not area_destino_nombre:
+        return Response(
+            {
+                'error': 'Área requerida',
+                'message': 'Debe especificar el nombre del área destino.'
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    area_destino = get_object_or_404(AreaResponsable, nombre=area_destino_nombre)
+
+    # Evitar reasignar a la misma área
+    area_actual = getattr(asignacion_actual.id_personal_asignado, 'id_area_responsable', None)
+    if area_actual and area_actual.id_area_responsable == area_destino.id_area_responsable:
+        return Response(
+            {
+                'error': 'Misma área',
+                'message': 'La denuncia ya está asignada a esa área.'
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Buscar un personal activo en el área destino
+    personal_destino = (
+        PersonalMunicipal.objects
+        .filter(id_area_responsable=area_destino, estado_laboral='Activo')
+        .order_by('id_personal')
+        .first()
+    )
+
+    if personal_destino is None:
+        return Response(
+            {
+                'error': 'Sin personal destino',
+                'message': 'No se encontró personal activo en el área destino.'
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Cerrar asignación actual
+    asignacion_actual.es_activa = False
+    asignacion_actual.fecha_finalizacion = timezone.now()
+    asignacion_actual.save()
+
+    # Crear nueva asignación
+    motivo = request.data.get('motivo', '')
+    nueva_asignacion = Asignacion.objects.create(
+        motivo_asignacion=motivo,
+        id_denuncia=denuncia,
+        id_personal_asignado=personal_destino,
+        id_personal_asignador=personal,
+    )
+
+    return Response(
+        {
+            'mensaje': 'Denuncia reasignada correctamente',
+            'id_denuncia': denuncia.id_denuncia,
+            'asignacion_actual': asignacion_actual.codigo_asignacion,
+            'nueva_asignacion': nueva_asignacion.codigo_asignacion,
+            'area_destino': area_destino.nombre,
+            'personal_destino': f"{personal_destino.nombre} {personal_destino.apellido}",
+        },
+        status=status.HTTP_200_OK,
+    )

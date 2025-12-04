@@ -263,7 +263,8 @@ class Evidencia(models.Model):
         Denuncia,
         on_delete=models.CASCADE,
         related_name='evidencias',
-        verbose_name='Denuncia'
+        verbose_name='Denuncia',
+        db_column='id_denuncia'
     )
     
     class Meta:

@@ -35,12 +35,22 @@
             ></span>
           </td>
           <td class="px-4 py-2 text-center">
-            <button
-              class="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500"
-              @click="$emit('ver-detalle', item)"
-            >
-              <span class="material-symbols-outlined text-[18px] leading-none">visibility</span>
-            </button>
+            <div class="inline-flex items-center gap-1">
+              <button
+                class="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500"
+                @click="$emit('ver-detalle', item)"
+                title="Ver detalle"
+              >
+                <span class="material-symbols-outlined text-[18px] leading-none">visibility</span>
+              </button>
+              <button
+                class="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-emerald-50 text-emerald-600"
+                @click="$emit('asignar', item)"
+                title="Asignar a mi gestión"
+              >
+                <span class="material-symbols-outlined text-[18px] leading-none">assignment_ind</span>
+              </button>
+            </div>
           </td>
         </tr>
       </tbody>
@@ -82,6 +92,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+
+const emit = defineEmits(['ver-detalle', 'asignar'])
 
 const props = defineProps({
   items: {

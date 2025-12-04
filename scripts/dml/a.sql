@@ -1,5 +1,184 @@
 -- ============================================
 -- SISTEMA DE DENUNCIAS CIUDADANAS
+-- Script COMPLETO: Poblamiento Inicial + Masivo
+-- Motor: PostgreSQL 14+
+-- Descripción: Script todo-en-uno que crea TODOS los datos
+-- Fecha: 2025-01-10
+-- ============================================
+
+-- ============================================
+-- PARTE 1: DATOS MAESTROS (INICIAL)
+-- ============================================
+
+-- Insertar Roles del Sistema
+INSERT INTO Rol (codigo_rol, nombre, descripcion, nivel, es_sistema, esta_activo) VALUES
+('ROL-001', 'SuperAdmin', 'Administrador con acceso total al sistema', 1, TRUE, TRUE),
+('ROL-002', 'Administrador', 'Administrador del sistema con permisos de configuración', 2, TRUE, TRUE),
+('ROL-003', 'JefeArea', 'Jefe de área responsable con permisos de gestión', 3, TRUE, TRUE),
+('ROL-004', 'Operador', 'Personal municipal que gestiona denuncias', 4, TRUE, TRUE),
+('ROL-005', 'Ciudadano', 'Usuario ciudadano que registra denuncias', 5, TRUE, TRUE),
+('ROL-006', 'Auditor', 'Usuario con permisos de solo lectura para auditoría', 6, TRUE, TRUE)
+ON CONFLICT (codigo_rol) DO NOTHING;
+
+-- Insertar Permisos del Sistema
+INSERT INTO Permiso (codigo_permiso, nombre, descripcion, modulo, accion, recurso) VALUES
+('PER-001', 'CREAR_DENUNCIA', 'Permite crear denuncias', 'Denuncias', 'Crear', 'Denuncia'),
+('PER-002', 'LEER_DENUNCIA', 'Permite consultar denuncias', 'Denuncias', 'Leer', 'Denuncia'),
+('PER-003', 'ACTUALIZAR_DENUNCIA', 'Permite actualizar denuncias', 'Denuncias', 'Actualizar', 'Denuncia'),
+('PER-004', 'ELIMINAR_DENUNCIA', 'Permite eliminar denuncias', 'Denuncias', 'Eliminar', 'Denuncia'),
+('PER-005', 'ASIGNAR_DENUNCIA', 'Permite asignar denuncias al personal', 'Denuncias', 'Ejecutar', 'Asignacion'),
+('PER-006', 'RESOLVER_DENUNCIA', 'Permite resolver denuncias', 'Denuncias', 'Ejecutar', 'Resolucion'),
+('PER-007', 'GESTIONAR_USUARIOS', 'Permite administrar usuarios del sistema', 'Administrativo', 'Crear', 'Usuario'),
+('PER-008', 'LEER_USUARIOS', 'Permite consultar usuarios', 'Administrativo', 'Leer', 'Usuario'),
+('PER-009', 'GESTIONAR_ROLES', 'Permite administrar roles y permisos', 'Administrativo', 'Crear', 'Rol'),
+('PER-010', 'GENERAR_REPORTES', 'Permite generar reportes del sistema', 'Reportes', 'Crear', 'Reporte'),
+('PER-011', 'LEER_REPORTES', 'Permite consultar reportes', 'Reportes', 'Leer', 'Reporte'),
+('PER-012', 'VER_AUDITORIA', 'Permite consultar logs de auditoría', 'Administrativo', 'Leer', 'LogAuditoria'),
+('PER-013', 'GESTIONAR_CATEGORIAS', 'Permite administrar categorías', 'Administrativo', 'Crear', 'Categoria'),
+('PER-014', 'GESTIONAR_AREAS', 'Permite administrar áreas responsables', 'Administrativo', 'Crear', 'AreaResponsable'),
+('PER-015', 'GESTIONAR_NOTIFICACIONES', 'Permite administrar plantillas de notificaciones', 'Notificaciones', 'Crear', 'PlantillaNotificacion')
+ON CONFLICT (codigo_permiso) DO NOTHING;
+
+-- Asignar Permisos a Roles
+INSERT INTO RolPermiso (id_rol, id_permiso) 
+SELECT r.id_rol, p.id_permiso 
+FROM Rol r, Permiso p 
+WHERE r.codigo_rol = 'ROL-001' -- SuperAdmin
+ON CONFLICT DO NOTHING;
+
+INSERT INTO RolPermiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso FROM Rol r, Permiso p
+WHERE r.codigo_rol = 'ROL-002' AND p.codigo_permiso IN ('PER-002', 'PER-003', 'PER-005', 'PER-007', 'PER-008', 'PER-009', 'PER-010', 'PER-011', 'PER-012', 'PER-013', 'PER-014', 'PER-015')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO RolPermiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso FROM Rol r, Permiso p
+WHERE r.codigo_rol = 'ROL-003' AND p.codigo_permiso IN ('PER-002', 'PER-003', 'PER-005', 'PER-006', 'PER-008', 'PER-010', 'PER-011')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO RolPermiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso FROM Rol r, Permiso p
+WHERE r.codigo_rol = 'ROL-004' AND p.codigo_permiso IN ('PER-002', 'PER-003', 'PER-006')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO RolPermiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso FROM Rol r, Permiso p
+WHERE r.codigo_rol = 'ROL-005' AND p.codigo_permiso IN ('PER-001', 'PER-002')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO RolPermiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso FROM Rol r, Permiso p
+WHERE r.codigo_rol = 'ROL-006' AND p.codigo_permiso IN ('PER-002', 'PER-008', 'PER-011', 'PER-012')
+ON CONFLICT DO NOTHING;
+
+-- Áreas Responsables
+INSERT INTO AreaResponsable (codigo_area, nombre, descripcion, email, telefono, capacidad_maxima, esta_activo) VALUES
+('ARE-001', 'Obras Públicas', 'Responsable de infraestructura vial, mantenimiento de calles y espacios públicos', 'obras.publicas@municipalidad.gob.pe', '01-2345678', 100, TRUE),
+('ARE-002', 'Servicios Públicos', 'Gestión de limpieza pública, recojo de basura y ornato', 'servicios.publicos@municipalidad.gob.pe', '01-2345679', 80, TRUE),
+('ARE-003', 'Seguridad Ciudadana', 'Coordinación con serenazgo y gestión de seguridad', 'seguridad@municipalidad.gob.pe', '01-2345680', 60, TRUE),
+('ARE-004', 'Gestión Ambiental', 'Áreas verdes, parques y medio ambiente', 'ambiente@municipalidad.gob.pe', '01-2345681', 50, TRUE),
+('ARE-005', 'Alumbrado Público', 'Mantenimiento y reparación de alumbrado público', 'alumbrado@municipalidad.gob.pe', '01-2345682', 40, TRUE),
+('ARE-006', 'Desarrollo Urbano', 'Planificación urbana y obras de desarrollo', 'desarrollo@municipalidad.gob.pe', '01-2345683', 70, TRUE)
+ON CONFLICT (codigo_area) DO NOTHING;
+
+-- Categorías de Denuncias
+INSERT INTO Categoria (codigo_categoria, nombre, descripcion, color, icono, esta_activo, tiempo_respuesta_promedio, id_area_responsable) VALUES
+('CAT-001', 'Baches en la vía', 'Huecos o deterioro en calles y avenidas', '#E74C3C', 'road_damage', TRUE, 72, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-001')),
+('CAT-002', 'Basura acumulada', 'Acumulación de residuos sólidos en vía pública', '#F39C12', 'delete', TRUE, 24, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-002')),
+('CAT-003', 'Alumbrado público', 'Postes sin luz o instalaciones dañadas', '#F1C40F', 'lightbulb', TRUE, 48, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-005')),
+('CAT-004', 'Inseguridad', 'Problemas de seguridad ciudadana', '#8E44AD', 'security', TRUE, 12, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-003')),
+('CAT-005', 'Áreas verdes descuidadas', 'Parques y jardines sin mantenimiento', '#27AE60', 'park', TRUE, 168, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-004')),
+('CAT-006', 'Veredas deterioradas', 'Veredas rotas o en mal estado', '#34495E', 'directions_walk', TRUE, 96, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-001')),
+('CAT-007', 'Señalización deficiente', 'Falta de señales de tránsito o en mal estado', '#3498DB', 'traffic', TRUE, 120, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-006')),
+('CAT-008', 'Ruido excesivo', 'Contaminación sonora', '#E67E22', 'volume_up', TRUE, 48, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-004')),
+('CAT-009', 'Mascota abandonada', 'Animales en situación de abandono', '#95A5A6', 'pets', TRUE, 24, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-004')),
+('CAT-010', 'Construcción ilegal', 'Obras sin permisos o invasiones', '#C0392B', 'construction', TRUE, 72, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-006'))
+ON CONFLICT (codigo_categoria) DO NOTHING;
+
+-- Plantillas de Notificaciones
+INSERT INTO PlantillaNotificacion (codigo_plantilla, nombre, tipo_evento, asunto, cuerpo_mensaje, variables, esta_activa) VALUES
+('PLT-001', 'Registro de Denuncia', 'Registro', 'Denuncia Registrada Exitosamente', 
+'Estimado/a {nombre_ciudadano}, Su denuncia ha sido registrada exitosamente en nuestro sistema. Código de seguimiento: {numero_seguimiento}. Tiempo estimado de atención: {tiempo_estimado} horas.', 
+'["nombre_ciudadano", "numero_seguimiento", "tiempo_estimado"]', TRUE),
+('PLT-002', 'Actualización de Estado', 'Actualización', 'Actualización de su Denuncia {numero_seguimiento}', 
+'Estimado/a {nombre_ciudadano}, Le informamos que su denuncia ha sido actualizada. Estado anterior: {estado_anterior}. Estado actual: {estado_nuevo}.', 
+'["nombre_ciudadano", "estado_anterior", "estado_nuevo", "numero_seguimiento"]', TRUE),
+('PLT-003', 'Asignación a Personal', 'Asignación', 'Nueva denuncia asignada', 
+'Estimado/a {nombre_personal}, Se le ha asignado una nueva denuncia para su atención. Código: {codigo_denuncia}', 
+'["nombre_personal", "codigo_denuncia"]', TRUE),
+('PLT-004', 'Resolución de Denuncia', 'Resolución', 'Su denuncia ha sido resuelta', 
+'Estimado/a {nombre_ciudadano}, Le informamos que su denuncia ha sido resuelta. Tipo de resolución: {tipo_resolucion}', 
+'["nombre_ciudadano", "tipo_resolucion"]', TRUE)
+ON CONFLICT (codigo_plantilla) DO NOTHING;
+
+-- Usuarios administrativos
+INSERT INTO Usuario (codigo_usuario, nombre_usuario, password_hash, email, estado_cuenta, requiere_mfa) VALUES
+('USR-00001', 'superadmin', 'Admin123!', 'superadmin@municipalidad.gob.pe', 'Activo', TRUE),
+('USR-00002', 'admin', 'Admin123!', 'admin@municipalidad.gob.pe', 'Activo', TRUE),
+('USR-00003', 'auditor', 'Audit123!', 'auditor@municipalidad.gob.pe', 'Activo', FALSE)
+ON CONFLICT (codigo_usuario) DO NOTHING;
+
+-- Asignar roles a usuarios administrativos
+INSERT INTO UsuarioRol (id_usuario, id_rol, es_activo)
+SELECT u.id_usuario, r.id_rol, TRUE FROM Usuario u, Rol r
+WHERE (u.codigo_usuario = 'USR-00001' AND r.codigo_rol = 'ROL-001')
+   OR (u.codigo_usuario = 'USR-00002' AND r.codigo_rol = 'ROL-002')
+   OR (u.codigo_usuario = 'USR-00003' AND r.codigo_rol = 'ROL-006')
+ON CONFLICT DO NOTHING;
+
+-- Jefes de Área
+INSERT INTO Usuario (codigo_usuario, nombre_usuario, password_hash, email, estado_cuenta) VALUES
+('USR-00101', 'jperez', 'Jefe123!', 'juan.perez@municipalidad.gob.pe', 'Activo'),
+('USR-00102', 'mgarcia', 'Jefe123!', 'maria.garcia@municipalidad.gob.pe', 'Activo'),
+('USR-00103', 'crodriguez', 'Jefe123!', 'carlos.rodriguez@municipalidad.gob.pe', 'Activo')
+ON CONFLICT (codigo_usuario) DO NOTHING;
+
+INSERT INTO PersonalMunicipal (codigo_personal, dni, nombre, apellido, email, cargo, fecha_ingreso, especialidad, id_area_responsable, id_usuario) VALUES
+('PER-00101', '12345678', 'Juan', 'Pérez López', 'juan.perez@municipalidad.gob.pe', 'Jefe de Obras Públicas', '2020-01-15', 'Ingeniería Civil', 
+ (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-001'),
+ (SELECT id_usuario FROM Usuario WHERE codigo_usuario = 'USR-00101')),
+('PER-00102', '23456789', 'María', 'García Torres', 'maria.garcia@municipalidad.gob.pe', 'Jefa de Servicios Públicos', '2019-03-10', 'Gestión Pública', 
+ (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-002'),
+ (SELECT id_usuario FROM Usuario WHERE codigo_usuario = 'USR-00102')),
+('PER-00103', '34567890', 'Carlos', 'Rodríguez Díaz', 'carlos.rodriguez@municipalidad.gob.pe', 'Jefe de Seguridad Ciudadana', '2021-06-20', 'Seguridad', 
+ (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-003'),
+ (SELECT id_usuario FROM Usuario WHERE codigo_usuario = 'USR-00103'))
+ON CONFLICT (codigo_personal) DO NOTHING;
+
+INSERT INTO UsuarioRol (id_usuario, id_rol, es_activo)
+SELECT u.id_usuario, r.id_rol, TRUE FROM Usuario u, Rol r
+WHERE u.codigo_usuario IN ('USR-00101', 'USR-00102', 'USR-00103') AND r.codigo_rol = 'ROL-003'
+ON CONFLICT DO NOTHING;
+
+-- Actualizar jefes de área
+UPDATE AreaResponsable SET id_jefe_area = (SELECT id_personal FROM PersonalMunicipal WHERE codigo_personal = 'PER-00101') WHERE codigo_area = 'ARE-001';
+UPDATE AreaResponsable SET id_jefe_area = (SELECT id_personal FROM PersonalMunicipal WHERE codigo_personal = 'PER-00102') WHERE codigo_area = 'ARE-002';
+UPDATE AreaResponsable SET id_jefe_area = (SELECT id_personal FROM PersonalMunicipal WHERE codigo_personal = 'PER-00103') WHERE codigo_area = 'ARE-003';
+
+-- Indicadores y Dashboards
+INSERT INTO Indicador (codigo_indicador, nombre, descripcion, formula, valor_minimo, valor_maximo, valor_actual, frecuencia_actualizacion, tipo_visualizacion) VALUES
+('IND-001', 'Tasa de Resolución', 'Porcentaje de denuncias resueltas vs total', '(denuncias_resueltas / total_denuncias) * 100', 70.00, 100.00, 85.50, 'Diario', 'Gauge'),
+('IND-002', 'Tiempo Promedio de Atención', 'Tiempo promedio en horas para resolver denuncias', 'AVG(tiempo_total_horas)', 0.00, 168.00, 48.75, 'Diario', 'Number'),
+('IND-003', 'Denuncias Registradas Hoy', 'Cantidad de denuncias registradas en el día', 'COUNT(*) WHERE fecha_registro = TODAY', 0.00, 500.00, 12.00, 'Tiempo real', 'Number'),
+('IND-004', 'Satisfacción Ciudadana', 'Calificación promedio de ciudadanos', 'AVG(calificacion_ciudadano)', 1.00, 5.00, 4.25, 'Diario', 'Gauge')
+ON CONFLICT (codigo_indicador) DO NOTHING;
+
+INSERT INTO Dashboard (codigo_dashboard, nombre, descripcion, tipo_dashboard, frecuencia_actualizacion, es_publico) VALUES
+('DSH-001', 'Dashboard Ejecutivo', 'Vista general para autoridades municipales', 'Ejecutivo', 'Diario', FALSE),
+('DSH-002', 'Dashboard Operativo', 'Vista para personal municipal', 'Operativo', 'Tiempo real', FALSE),
+('DSH-003', 'Dashboard Público', 'Estadísticas visibles para ciudadanos', 'Ciudadano', 'Diario', TRUE)
+ON CONFLICT (codigo_dashboard) DO NOTHING;
+
+INSERT INTO DashboardIndicador (id_dashboard, id_indicador, orden, tipo_visualizacion) VALUES
+((SELECT id_dashboard FROM Dashboard WHERE codigo_dashboard = 'DSH-001'), (SELECT id_indicador FROM Indicador WHERE codigo_indicador = 'IND-001'), 1, 'Gauge'),
+((SELECT id_dashboard FROM Dashboard WHERE codigo_dashboard = 'DSH-001'), (SELECT id_indicador FROM Indicador WHERE codigo_indicador = 'IND-002'), 2, 'Number'),
+((SELECT id_dashboard FROM Dashboard WHERE codigo_dashboard = 'DSH-001'), (SELECT id_indicador FROM Indicador WHERE codigo_indicador = 'IND-004'), 3, 'Gauge'),
+((SELECT id_dashboard FROM Dashboard WHERE codigo_dashboard = 'DSH-002'), (SELECT id_indicador FROM Indicador WHERE codigo_indicador = 'IND-003'), 1, 'Number'),
+((SELECT id_dashboard FROM Dashboard WHERE codigo_dashboard = 'DSH-003'), (SELECT id_indicador FROM Indicador WHERE codigo_indicador = 'IND-001'), 1, 'BarChart')
+ON CONFLICT DO NOTHING;
+
+-- ============================================
+-- SISTEMA DE DENUNCIAS CIUDADANAS
 -- Script de Poblamiento Masivo con PL/pgSQL
 -- Motor: PostgreSQL 14+
 -- Cantidad: 100+ registros realistas
@@ -20,6 +199,12 @@ DECLARE
     v_contador INTEGER;
     v_estado TEXT;
     v_prioridad TEXT;
+    v_count_areas INTEGER;
+    v_count_categorias INTEGER;
+    v_fecha_asignacion TIMESTAMP;
+    v_fecha_tramitacion TIMESTAMP;
+    v_fecha_registro TIMESTAMP;
+    v_fecha_actualiz TIMESTAMP;
     
     -- Arrays para generar datos aleatorios
     v_nombres_m TEXT[] := ARRAY['Carlos', 'Juan', 'Pedro', 'Luis', 'José', 'Miguel', 'Roberto', 'Fernando', 'Andrés', 'Diego', 
@@ -63,6 +248,86 @@ BEGIN
     RAISE NOTICE '================================================';
     
     -- ============================================
+    -- VALIDACIÓN PREVIA: VERIFICAR DATOS MAESTROS
+    -- ============================================
+    RAISE NOTICE 'Verificando datos maestros necesarios...';
+    
+    -- Verificar áreas responsables
+    SELECT COUNT(*) INTO v_count_areas FROM AreaResponsable;
+    IF v_count_areas = 0 THEN
+        RAISE NOTICE '⚠ No hay áreas responsables. Creando datos maestros...';
+        
+        -- Crear áreas responsables
+        INSERT INTO AreaResponsable (codigo_area, nombre, descripcion, email, telefono, capacidad_maxima, esta_activo) VALUES
+        ('ARE-001', 'Obras Públicas', 'Responsable de infraestructura vial, mantenimiento de calles y espacios públicos', 'obras.publicas@municipalidad.gob.pe', '01-2345678', 100, TRUE),
+        ('ARE-002', 'Servicios Públicos', 'Gestión de limpieza pública, recojo de basura y ornato', 'servicios.publicos@municipalidad.gob.pe', '01-2345679', 80, TRUE),
+        ('ARE-003', 'Seguridad Ciudadana', 'Coordinación con serenazgo y gestión de seguridad', 'seguridad@municipalidad.gob.pe', '01-2345680', 60, TRUE),
+        ('ARE-004', 'Gestión Ambiental', 'Áreas verdes, parques y medio ambiente', 'ambiente@municipalidad.gob.pe', '01-2345681', 50, TRUE),
+        ('ARE-005', 'Alumbrado Público', 'Mantenimiento y reparación de alumbrado público', 'alumbrado@municipalidad.gob.pe', '01-2345682', 40, TRUE),
+        ('ARE-006', 'Desarrollo Urbano', 'Planificación urbana y obras de desarrollo', 'desarrollo@municipalidad.gob.pe', '01-2345683', 70, TRUE)
+        ON CONFLICT (codigo_area) DO NOTHING;
+        
+        RAISE NOTICE '✓ Áreas responsables creadas';
+    ELSE
+        RAISE NOTICE '✓ Áreas responsables existentes: %', v_count_areas;
+    END IF;
+    
+    -- Verificar categorías
+    SELECT COUNT(*) INTO v_count_categorias FROM Categoria;
+    IF v_count_categorias = 0 THEN
+        RAISE NOTICE '⚠ No hay categorías. Creando datos maestros...';
+        
+        -- Crear categorías
+        INSERT INTO Categoria (codigo_categoria, nombre, descripcion, color, icono, esta_activo, tiempo_respuesta_promedio, id_area_responsable) VALUES
+        ('CAT-001', 'Baches en la vía', 'Huecos o deterioro en calles y avenidas', '#E74C3C', 'road_damage', TRUE, 72, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-001')),
+        ('CAT-002', 'Basura acumulada', 'Acumulación de residuos sólidos en vía pública', '#F39C12', 'delete', TRUE, 24, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-002')),
+        ('CAT-003', 'Alumbrado público', 'Postes sin luz o instalaciones dañadas', '#F1C40F', 'lightbulb', TRUE, 48, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-005')),
+        ('CAT-004', 'Inseguridad', 'Problemas de seguridad ciudadana', '#8E44AD', 'security', TRUE, 12, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-003')),
+        ('CAT-005', 'Áreas verdes descuidadas', 'Parques y jardines sin mantenimiento', '#27AE60', 'park', TRUE, 168, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-004')),
+        ('CAT-006', 'Veredas deterioradas', 'Veredas rotas o en mal estado', '#34495E', 'directions_walk', TRUE, 96, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-001')),
+        ('CAT-007', 'Señalización deficiente', 'Falta de señales de tránsito o en mal estado', '#3498DB', 'traffic', TRUE, 120, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-006')),
+        ('CAT-008', 'Ruido excesivo', 'Contaminación sonora', '#E67E22', 'volume_up', TRUE, 48, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-004')),
+        ('CAT-009', 'Mascota abandonada', 'Animales en situación de abandono', '#95A5A6', 'pets', TRUE, 24, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-004')),
+        ('CAT-010', 'Construcción ilegal', 'Obras sin permisos o invasiones', '#C0392B', 'construction', TRUE, 72, (SELECT id_area_responsable FROM AreaResponsable WHERE codigo_area = 'ARE-006'))
+        ON CONFLICT (codigo_categoria) DO NOTHING;
+        
+        RAISE NOTICE '✓ Categorías creadas';
+    ELSE
+        RAISE NOTICE '✓ Categorías existentes: %', v_count_categorias;
+    END IF;
+    
+    -- Verificar plantillas de notificación
+    IF NOT EXISTS (SELECT 1 FROM PlantillaNotificacion LIMIT 1) THEN
+        RAISE NOTICE '⚠ No hay plantillas de notificación. Creando...';
+        
+        INSERT INTO PlantillaNotificacion (codigo_plantilla, nombre, tipo_evento, asunto, cuerpo_mensaje, variables, esta_activa) VALUES
+        ('PLT-001', 'Registro de Denuncia', 'Registro', 'Denuncia Registrada Exitosamente', 
+        'Estimado/a {nombre_ciudadano}, Su denuncia ha sido registrada exitosamente. Código: {numero_seguimiento}', 
+        '["nombre_ciudadano", "numero_seguimiento"]', TRUE),
+        ('PLT-002', 'Actualización de Estado', 'Actualización', 'Actualización de su Denuncia', 
+        'Su denuncia ha sido actualizada. Estado: {estado_nuevo}', 
+        '["estado_nuevo"]', TRUE)
+        ON CONFLICT (codigo_plantilla) DO NOTHING;
+        
+        RAISE NOTICE '✓ Plantillas de notificación creadas';
+    END IF;
+    
+    -- Verificar roles
+    IF NOT EXISTS (SELECT 1 FROM Rol WHERE codigo_rol = 'ROL-005') THEN
+        RAISE NOTICE '⚠ No hay roles. Creando roles básicos...';
+        
+        INSERT INTO Rol (codigo_rol, nombre, descripcion, nivel, es_sistema, esta_activo) VALUES
+        ('ROL-005', 'Ciudadano', 'Usuario ciudadano que registra denuncias', 5, TRUE, TRUE),
+        ('ROL-004', 'Operador', 'Personal municipal que gestiona denuncias', 4, TRUE, TRUE)
+        ON CONFLICT (codigo_rol) DO NOTHING;
+        
+        RAISE NOTICE '✓ Roles creados';
+    END IF;
+    
+    RAISE NOTICE '✓ Validación completada. Iniciando poblamiento...';
+    RAISE NOTICE '';
+    
+    -- ============================================
     -- PASO 1: CREAR 100 CIUDADANOS CON USUARIOS
     -- ============================================
     RAISE NOTICE 'Paso 1/8: Creando 100 ciudadanos...';
@@ -70,13 +335,13 @@ BEGIN
     FOR v_contador IN 1..100 LOOP
         v_genero := floor(random() * 2)::INTEGER; -- 0=masculino, 1=femenino
         
-        -- Crear usuario
+        -- Crear usuario (usando rango 20000+ para evitar conflictos)
         INSERT INTO Usuario (codigo_usuario, nombre_usuario, password_hash, email, estado_cuenta)
         VALUES (
-            'USR-' || LPAD(v_contador::TEXT, 5, '0'),
-            'ciudadano' || v_contador,
+            'USR-' || LPAD((20000 + v_contador)::TEXT, 5, '0'),
+            'ciudadano_' || (20000 + v_contador),
             'Ciudadano123!',
-            'ciudadano' || v_contador || '@email.com',
+            'ciudadano_' || (20000 + v_contador) || '@email.com',
             CASE WHEN random() < 0.95 THEN 'Activo' ELSE 'Inactivo' END
         )
         RETURNING id_usuario INTO v_usuario_id;
@@ -87,12 +352,12 @@ BEGIN
             fecha_emision_dni, id_usuario, es_anonimo, estado_cuenta
         )
         VALUES (
-            'CIU-' || LPAD(v_contador::TEXT, 5, '0'),
+            'CIU-' || LPAD((20000 + v_contador)::TEXT, 5, '0'),
             LPAD((v_dni_base + v_contador)::TEXT, 8, '0'),
             CASE WHEN v_genero = 0 THEN v_nombres_m[1 + floor(random() * 20)::INTEGER]
                  ELSE v_nombres_f[1 + floor(random() * 20)::INTEGER] END,
             v_apellidos[1 + floor(random() * 30)::INTEGER] || ' ' || v_apellidos[1 + floor(random() * 30)::INTEGER],
-            'ciudadano' || v_contador || '@email.com',
+            'ciudadano_' || (20000 + v_contador) || '@email.com',
             v_calles[1 + floor(random() * 20)::INTEGER] || ' ' || (100 + floor(random() * 900)::INTEGER),
             CURRENT_DATE - INTERVAL '1 year' * (1 + floor(random() * 5)::INTEGER),
             v_usuario_id,
@@ -120,7 +385,7 @@ BEGIN
             frecuencia_resumen, id_usuario
         )
         VALUES (
-            'CFG-' || LPAD(v_contador::TEXT, 5, '0'),
+            'CFG-' || LPAD((20000 + v_contador)::TEXT, 5, '0'),
             random() < 0.9, -- 90% reciben email
             random() < 0.3, -- 30% reciben SMS
             random() < 0.8, -- 80% reciben push
@@ -148,13 +413,13 @@ BEGIN
     FOR v_contador IN 1..20 LOOP
         v_genero := floor(random() * 2)::INTEGER;
         
-        -- Crear usuario para personal
+        -- Crear usuario para personal (usando rango 1000+ para evitar conflictos)
         INSERT INTO Usuario (codigo_usuario, nombre_usuario, password_hash, email, estado_cuenta)
         VALUES (
-            'USR-' || LPAD((500 + v_contador)::TEXT, 5, '0'),
-            'personal' || v_contador,
+            'USR-' || LPAD((1000 + v_contador)::TEXT, 5, '0'),
+            'personal_' || (1000 + v_contador),
             'Personal123!',
-            'personal' || v_contador || '@municipalidad.gob.pe',
+            'personal_' || (1000 + v_contador) || '@municipalidad.gob.pe',
             'Activo'
         )
         RETURNING id_usuario INTO v_usuario_id;
@@ -164,13 +429,13 @@ BEGIN
             codigo_personal, dni, nombre, apellido, email, cargo, 
             fecha_ingreso, especialidad, estado_laboral, id_area_responsable, id_usuario
         )
-        VALUES (
-            'PER-' || LPAD((500 + v_contador)::TEXT, 5, '0'),
-            LPAD((40000000 + v_contador)::TEXT, 8, '0'),
+        SELECT 
+            'PER-' || LPAD((1000 + v_contador)::TEXT, 5, '0'),
+            LPAD((50000000 + v_contador)::TEXT, 8, '0'),
             CASE WHEN v_genero = 0 THEN v_nombres_m[1 + floor(random() * 20)::INTEGER]
                  ELSE v_nombres_f[1 + floor(random() * 20)::INTEGER] END,
             v_apellidos[1 + floor(random() * 30)::INTEGER] || ' ' || v_apellidos[1 + floor(random() * 30)::INTEGER],
-            'personal' || v_contador || '@municipalidad.gob.pe',
+            'personal_' || (1000 + v_contador) || '@municipalidad.gob.pe',
             CASE floor(random() * 4)::INTEGER
                 WHEN 0 THEN 'Técnico de Campo'
                 WHEN 1 THEN 'Supervisor'
@@ -187,9 +452,8 @@ BEGIN
                 ELSE 'Mantenimiento'
             END,
             'Activo',
-            (SELECT id_area_responsable FROM AreaResponsable ORDER BY RANDOM() LIMIT 1),
+            (SELECT id_area_responsable FROM AreaResponsable WHERE esta_activo = TRUE ORDER BY RANDOM() LIMIT 1),
             v_usuario_id
-        )
         RETURNING id_personal INTO v_personal_id;
         
         -- Asignar rol operador
@@ -218,7 +482,7 @@ BEGIN
             codigo_ubicacion, latitud, longitud, direccion, referencia, distrito, codigo_postal
         )
         VALUES (
-            'UBI-' || LPAD(v_contador::TEXT, 5, '0'),
+            'UBI-' || LPAD((1000 + v_contador)::TEXT, 5, '0'),
             v_lat_base + (random() * 0.2 - 0.1), -- Variación de latitud
             v_lon_base + (random() * 0.2 - 0.1), -- Variación de longitud
             v_calles[1 + floor(random() * 20)::INTEGER] || ' ' || (100 + floor(random() * 2900)::INTEGER),
@@ -279,13 +543,16 @@ BEGIN
         LIMIT 1;
         
         -- Crear denuncia con fecha variable en los últimos 60 días
+        v_fecha_registro := v_fecha_actual - INTERVAL '1 day' * floor(random() * 60)::INTEGER;
+        v_fecha_actualiz := v_fecha_registro + INTERVAL '1 day' * floor(random() * 30)::INTEGER;
+        
         INSERT INTO Denuncia (
             codigo_denuncia, titulo, descripcion, fecha_registro, fecha_actualizacion,
             estado, prioridad, es_anonima, numero_seguimiento, requiere_validacion,
             id_ciudadano, id_categoria, id_ubicacion
         )
         VALUES (
-            'DEN-2025-' || LPAD(v_contador::TEXT, 5, '0'),
+            'DEN-2025-' || LPAD((10000 + v_contador)::TEXT, 5, '0'),
             CASE (SELECT codigo_categoria FROM Categoria WHERE id_categoria = v_categoria_id)
                 WHEN 'CAT-001' THEN v_titulos_baches[1 + floor(random() * 6)::INTEGER]
                 WHEN 'CAT-002' THEN v_titulos_basura[1 + floor(random() * 6)::INTEGER]
@@ -296,8 +563,8 @@ BEGIN
             END,
             'Descripción detallada del problema reportado. Se requiere atención para resolver esta situación que afecta a los vecinos de la zona. ' ||
             'El problema persiste desde hace ' || (1 + floor(random() * 30)::INTEGER) || ' días.',
-            v_fecha_actual - INTERVAL '1 day' * floor(random() * 60)::INTEGER,
-            v_fecha_actual - INTERVAL '1 day' * floor(random() * 30)::INTEGER,
+            v_fecha_registro,
+            v_fecha_actualiz,
             v_estado,
             v_prioridad,
             random() < 0.15, -- 15% anónimas
@@ -315,7 +582,7 @@ BEGIN
             comentario, es_visible, id_denuncia, id_usuario
         )
         VALUES (
-            'SEG-' || LPAD(v_contador::TEXT, 5, '0') || '-01',
+            'SEG-' || LPAD((10000 + v_contador)::TEXT, 5, '0') || '-01',
             NULL,
             'Registrado',
             v_fecha_actual - INTERVAL '1 day' * floor(random() * 60)::INTEGER,
@@ -332,7 +599,7 @@ BEGIN
                 comentario, es_visible, id_denuncia, id_usuario
             )
             VALUES (
-                'SEG-' || LPAD(v_contador::TEXT, 5, '0') || '-02',
+                'SEG-' || LPAD((10000 + v_contador)::TEXT, 5, '0') || '-02',
                 'Registrado',
                 'En revisión',
                 v_fecha_actual - INTERVAL '1 day' * floor(random() * 45)::INTEGER,
@@ -345,23 +612,38 @@ BEGIN
         
         IF v_estado IN ('Asignado', 'En proceso', 'Resuelta', 'Cerrada') THEN
             -- Crear asignación
+            -- Intentar encontrar personal del área correspondiente, si no hay, usar cualquier personal
             SELECT id_personal INTO v_personal_id
             FROM PersonalMunicipal 
             WHERE id_area_responsable = (SELECT id_area_responsable FROM Categoria WHERE id_categoria = v_categoria_id)
+            AND estado_laboral = 'Activo'
             ORDER BY RANDOM() 
             LIMIT 1;
+            
+            -- Si no hay personal en esa área específica, asignar a cualquier personal activo
+            IF v_personal_id IS NULL THEN
+                SELECT id_personal INTO v_personal_id
+                FROM PersonalMunicipal 
+                WHERE estado_laboral = 'Activo'
+                ORDER BY RANDOM() 
+                LIMIT 1;
+            END IF;
+            
+            -- Calcular fecha de asignación primero
+            v_fecha_asignacion := v_fecha_actual - INTERVAL '1 day' * floor(random() * 40)::INTEGER;
             
             INSERT INTO Asignacion (
                 codigo_asignacion, fecha_asignacion, motivo_asignacion, es_activa,
                 fecha_finalizacion, id_denuncia, id_personal_asignado, id_personal_asignador
             )
             VALUES (
-                'ASG-' || LPAD(v_contador::TEXT, 5, '0'),
-                v_fecha_actual - INTERVAL '1 day' * floor(random() * 40)::INTEGER,
+                'ASG-' || LPAD((10000 + v_contador)::TEXT, 5, '0'),
+                v_fecha_asignacion,
                 'Asignación por especialidad y disponibilidad',
                 v_estado NOT IN ('Resuelta', 'Cerrada', 'Rechazada'),
                 CASE WHEN v_estado IN ('Resuelta', 'Cerrada') 
-                     THEN v_fecha_actual - INTERVAL '1 day' * floor(random() * 10)::INTEGER 
+                     -- Sumar días a fecha_asignacion para garantizar que sea posterior
+                     THEN v_fecha_asignacion + INTERVAL '1 day' * (1 + floor(random() * 20)::INTEGER)
                      ELSE NULL END,
                 v_denuncia_id,
                 v_personal_id,
@@ -374,7 +656,7 @@ BEGIN
                 comentario, es_visible, id_denuncia, id_usuario
             )
             VALUES (
-                'SEG-' || LPAD(v_contador::TEXT, 5, '0') || '-03',
+                'SEG-' || LPAD((10000 + v_contador)::TEXT, 5, '0') || '-03',
                 'En revisión',
                 'Asignado',
                 v_fecha_actual - INTERVAL '1 day' * floor(random() * 35)::INTEGER,
@@ -387,15 +669,19 @@ BEGIN
         
         IF v_estado IN ('En proceso', 'Resuelta', 'Cerrada') THEN
             -- Crear tramitación
+            -- Calcular fecha de inicio primero
+            v_fecha_tramitacion := v_fecha_actual - INTERVAL '1 day' * floor(random() * 30)::INTEGER;
+            
             INSERT INTO Tramitacion (
                 codigo_tramitacion, fecha_inicio, fecha_finalizacion, accion_realizada,
                 observaciones, costo_estimado, estado_tramitacion, id_asignacion
             )
             VALUES (
-                'TRA-' || LPAD(v_contador::TEXT, 5, '0'),
-                v_fecha_actual - INTERVAL '1 day' * floor(random() * 30)::INTEGER,
+                'TRA-' || LPAD((10000 + v_contador)::TEXT, 5, '0'),
+                v_fecha_tramitacion,
                 CASE WHEN v_estado IN ('Resuelta', 'Cerrada') 
-                     THEN v_fecha_actual - INTERVAL '1 day' * floor(random() * 5)::INTEGER 
+                     -- Sumar días a fecha_tramitacion para garantizar que sea posterior
+                     THEN v_fecha_tramitacion + INTERVAL '1 day' * (1 + floor(random() * 15)::INTEGER)
                      ELSE NULL END,
                 'Se procedió con la atención correspondiente según los protocolos establecidos. ' ||
                 'Se coordinó con las áreas involucradas para la resolución del caso.',
@@ -413,7 +699,7 @@ BEGIN
                 comentario, es_visible, id_denuncia, id_usuario
             )
             VALUES (
-                'SEG-' || LPAD(v_contador::TEXT, 5, '0') || '-04',
+                'SEG-' || LPAD((10000 + v_contador)::TEXT, 5, '0') || '-04',
                 'Asignado',
                 'En proceso',
                 v_fecha_actual - INTERVAL '1 day' * floor(random() * 25)::INTEGER,
@@ -431,7 +717,7 @@ BEGIN
                 tiempo_total_horas, calificacion_ciudadano, comentario_ciudadano, id_tramitacion
             )
             VALUES (
-                'RES-' || LPAD(v_contador::TEXT, 5, '0'),
+                'RES-' || LPAD((10000 + v_contador)::TEXT, 5, '0'),
                 v_fecha_actual - INTERVAL '1 day' * floor(random() * 3)::INTEGER,
                 CASE floor(random() * 4)::INTEGER
                     WHEN 0 THEN 'Resuelta'
@@ -460,7 +746,7 @@ BEGIN
                 comentario, es_visible, id_denuncia, id_usuario
             )
             VALUES (
-                'SEG-' || LPAD(v_contador::TEXT, 5, '0') || '-05',
+                'SEG-' || LPAD((10000 + v_contador)::TEXT, 5, '0') || '-05',
                 'En proceso',
                 v_estado,
                 v_fecha_actual - INTERVAL '1 day' * floor(random() * 2)::INTEGER,
@@ -479,9 +765,9 @@ BEGIN
                     tamaño_bytes, fecha_carga, hash_archivo, esta_escaneado, id_denuncia
                 )
                 VALUES (
-                    'EVI-' || LPAD(v_contador::TEXT, 5, '0') || '-' || LPAD(v_genero::TEXT, 2, '0'),
-                    'evidencia_' || v_contador || '_' || v_genero || '.jpg',
-                    '/storage/evidencias/2025/01/' || v_contador || '/' || v_genero || '.jpg',
+                    'EVI-' || LPAD((10000 + v_contador)::TEXT, 5, '0') || '-' || LPAD(v_genero::TEXT, 2, '0'),
+                    'evidencia_' || (10000 + v_contador) || '_' || v_genero || '.jpg',
+                    '/storage/evidencias/2025/01/' || (10000 + v_contador) || '/' || v_genero || '.jpg',
                     CASE floor(random() * 3)::INTEGER
                         WHEN 0 THEN 'image/jpeg'
                         WHEN 1 THEN 'image/png'
@@ -504,7 +790,7 @@ BEGIN
                     es_leido, requiere_respuesta, id_denuncia, id_usuario_remitente
                 )
                 VALUES (
-                    'COM-' || LPAD(v_contador::TEXT, 5, '0') || '-' || LPAD(v_genero::TEXT, 2, '0'),
+                    'COM-' || LPAD((10000 + v_contador)::TEXT, 5, '0') || '-' || LPAD(v_genero::TEXT, 2, '0'),
                     CASE floor(random() * 4)::INTEGER
                         WHEN 0 THEN '¿Cuál es el estado actual de mi denuncia?'
                         WHEN 1 THEN 'Necesito información sobre los avances'
@@ -531,7 +817,7 @@ BEGIN
             id_denuncia, id_usuario, id_plantilla
         )
         VALUES (
-            'NOT-' || LPAD(v_contador::TEXT, 5, '0') || '-01',
+            'NOT-' || LPAD((10000 + v_contador)::TEXT, 5, '0') || '-01',
             'Registro',
             v_fecha_actual - INTERVAL '1 day' * floor(random() * 60)::INTEGER,
             v_fecha_actual - INTERVAL '1 day' * floor(random() * 59)::INTEGER,
@@ -573,7 +859,7 @@ BEGIN
             fecha_calculo, categoria, area, zona
         )
         VALUES (
-            'EST-' || LPAD(v_contador::TEXT, 5, '0'),
+            'EST-' || LPAD((5000 + v_contador)::TEXT, 5, '0'),
             CASE floor(random() * 6)::INTEGER
                 WHEN 0 THEN 'Denuncias Registradas'
                 WHEN 1 THEN 'Denuncias Resueltas'
@@ -616,7 +902,7 @@ BEGIN
             tasa_resolucion, tiempo_promedio_atencion, periodo_analisis, nivel_criticidad
         )
         VALUES (
-            'TEN-' || LPAD(v_contador::TEXT, 5, '0'),
+            'TEN-' || LPAD((6000 + v_contador)::TEXT, 5, '0'),
             'Zona ' || (1 + floor(random() * 10)::INTEGER),
             v_distritos[1 + floor(random() * 20)::INTEGER],
             5 + floor(random() * 50)::INTEGER,
@@ -652,7 +938,7 @@ BEGIN
             calificacion_promedio, id_area_responsable
         )
         VALUES (
-            'RNK-' || LPAD(v_contador::TEXT, 5, '0'),
+            'RNK-' || LPAD((7000 + v_contador)::TEXT, 5, '0'),
             'Mensual',
             v_contador,
             (60 + random() * 40)::NUMERIC(5,2),
@@ -679,7 +965,7 @@ BEGIN
             es_publico, id_usuario_generador, estado_generacion, parametros_configuracion
         )
         VALUES (
-            'REP-' || LPAD(v_contador::TEXT, 5, '0'),
+            'REP-' || LPAD((8000 + v_contador)::TEXT, 5, '0'),
             CASE floor(random() * 4)::INTEGER
                 WHEN 0 THEN 'Ejecutivo'
                 WHEN 1 THEN 'Operativo'
@@ -702,7 +988,7 @@ BEGIN
                 WHEN 2 THEN 'CSV'
                 ELSE 'JSON'
             END,
-            '/storage/reportes/2025/01/reporte_' || v_contador || '.pdf',
+            '/storage/reportes/2025/01/reporte_' || (8000 + v_contador) || '.pdf',
             random() < 0.3,
             (SELECT id_usuario FROM Usuario WHERE codigo_usuario IN ('USR-00002', 'USR-00003') ORDER BY RANDOM() LIMIT 1),
             CASE floor(random() * 3)::INTEGER
@@ -727,7 +1013,7 @@ BEGIN
             direccion_ip, datos_antes, datos_despues, resultado, mensaje_error, id_usuario
         )
         VALUES (
-            'LOG-' || LPAD(v_contador::TEXT, 5, '0'),
+            'LOG-' || LPAD((9000 + v_contador)::TEXT, 5, '0'),
             CASE floor(random() * 7)::INTEGER
                 WHEN 0 THEN 'CREAR'
                 WHEN 1 THEN 'LEER'
@@ -799,65 +1085,3 @@ BEGIN
     RAISE NOTICE '================================================';
     
 END $$;
-
--- ============================================
--- CONSULTAS DE VERIFICACIÓN
--- ============================================
-
--- Ver resumen de datos creados
-SELECT 'Ciudadanos' as Tabla, COUNT(*) as Total FROM Ciudadano
-UNION ALL
-SELECT 'Personal Municipal', COUNT(*) FROM PersonalMunicipal
-UNION ALL
-SELECT 'Denuncias', COUNT(*) FROM Denuncia
-UNION ALL
-SELECT 'Ubicaciones', COUNT(*) FROM Ubicacion
-UNION ALL
-SELECT 'Seguimientos', COUNT(*) FROM Seguimiento
-UNION ALL
-SELECT 'Asignaciones', COUNT(*) FROM Asignacion
-UNION ALL
-SELECT 'Tramitaciones', COUNT(*) FROM Tramitacion
-UNION ALL
-SELECT 'Resoluciones', COUNT(*) FROM Resolucion
-UNION ALL
-SELECT 'Evidencias', COUNT(*) FROM Evidencia
-UNION ALL
-SELECT 'Notificaciones', COUNT(*) FROM Notificacion
-UNION ALL
-SELECT 'Estadísticas', COUNT(*) FROM Estadistica
-UNION ALL
-SELECT 'Logs Auditoría', COUNT(*) FROM LogAuditoria
-ORDER BY 2 DESC;
-
--- Ver distribución de denuncias por estado
-SELECT estado, COUNT(*) as cantidad, 
-       ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM Denuncia), 2) as porcentaje
-FROM Denuncia
-GROUP BY estado
-ORDER BY cantidad DESC;
-
--- Ver distribución de denuncias por prioridad
-SELECT prioridad, COUNT(*) as cantidad,
-       ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM Denuncia), 2) as porcentaje
-FROM Denuncia
-GROUP BY prioridad
-ORDER BY cantidad DESC;
-
--- Ver denuncias por categoría
-SELECT c.nombre as categoria, COUNT(d.id_denuncia) as total_denuncias
-FROM Categoria c
-LEFT JOIN Denuncia d ON c.id_categoria = d.id_categoria
-GROUP BY c.nombre
-ORDER BY total_denuncias DESC;
-
--- Ver denuncias por distrito (top 10)
-SELECT u.distrito, COUNT(d.id_denuncia) as total_denuncias
-FROM Ubicacion u
-INNER JOIN Denuncia d ON u.id_ubicacion = d.id_ubicacion
-GROUP BY u.distrito
-ORDER BY total_denuncias DESC
-LIMIT 10;
-
-RAISE NOTICE '✓ Script de poblamiento masivo ejecutado correctamente';
-RAISE NOTICE '✓ Tu sistema ahora tiene datos realistas para pruebas y desarrollo';

@@ -167,7 +167,7 @@ const config = ref({
 
 const cargarNotificaciones = async () => {
   try {
-    const response = await axios.get('/api/notificaciones/usuario/')
+    const response = await axios.get('/notificaciones/usuario/')
     notificaciones.value = response.data?.results || []
   } catch (error) {
     console.error('Error al cargar notificaciones internas (municipal):', error)
@@ -179,7 +179,7 @@ const cargarNotificaciones = async () => {
 
 const cargarConfig = async () => {
   try {
-    const response = await axios.get('/api/notificaciones/usuario/config/')
+    const response = await axios.get('/notificaciones/usuario/config/')
     config.value = {
       recibir_email: !!response.data.recibir_email,
       recibir_sms: !!response.data.recibir_sms,
@@ -195,7 +195,7 @@ const cargarConfig = async () => {
 const guardarConfig = async () => {
   try {
     savingConfig.value = true
-    await axios.put('/api/notificaciones/usuario/config/', {
+    await axios.put('/notificaciones/usuario/config/', {
       recibir_email: config.value.recibir_email,
       recibir_sms: config.value.recibir_sms,
       recibir_push: config.value.recibir_push,
@@ -211,7 +211,7 @@ const guardarConfig = async () => {
 
 const marcarLeida = async (n) => {
   try {
-    await axios.post('/api/notificaciones/usuario/marcar-leida/', {
+    await axios.post('/notificaciones/usuario/marcar-leida/', {
       id_notificacion: n.id_notificacion
     })
     n.estado_envio = 'Leído'

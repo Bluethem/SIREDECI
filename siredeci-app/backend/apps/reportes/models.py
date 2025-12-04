@@ -80,7 +80,8 @@ class Reporte(models.Model):
         Usuario,
         on_delete=models.PROTECT,
         related_name='reportes_generados',
-        verbose_name='Usuario Generador'
+        verbose_name='Usuario Generador',
+        db_column='id_usuario_generador'
     )
     estado_generacion = models.CharField(
         max_length=20,
@@ -583,7 +584,8 @@ class RankingDesempeno(models.Model):
         AreaResponsable,
         on_delete=models.PROTECT,
         related_name='rankings',
-        verbose_name='Área Responsable'
+        verbose_name='Área Responsable',
+        db_column='id_area_responsable'
     )
     
     class Meta:

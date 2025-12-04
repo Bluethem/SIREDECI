@@ -42,12 +42,31 @@
             <span v-else-if="item.vinculada" class="text-slate-400 text-lg">🔗</span>
           </td>
           <td class="px-4 py-2 text-center">
-            <button
-              class="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500"
-              @click="$emit('ver-detalle', item)"
-            >
-              <span class="material-symbols-outlined text-[18px] leading-none">visibility</span>
-            </button>
+            <div class="inline-flex items-center gap-1">
+              <button
+                class="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500"
+                @click="$emit('ver-detalle', item)"
+                title="Ver detalle"
+              >
+                <span class="material-symbols-outlined text-[18px] leading-none">visibility</span>
+              </button>
+              <button
+                class="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-sky-50 text-sky-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="item.estado === 'En proceso' || ['Resuelta', 'Rechazada', 'Cerrada'].includes(item.estado)"
+                @click="$emit('cambiar-estado', { id: item.id, nuevoEstado: 'En proceso' })"
+                title="Marcar en proceso"
+              >
+                <span class="material-symbols-outlined text-[18px] leading-none">play_arrow</span>
+              </button>
+              <button
+                class="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-emerald-50 text-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="item.estado === 'Resuelta' || ['Rechazada', 'Cerrada'].includes(item.estado)"
+                @click="$emit('cambiar-estado', { id: item.id, nuevoEstado: 'Resuelta' })"
+                title="Marcar resuelta"
+              >
+                <span class="material-symbols-outlined text-[18px] leading-none">check_circle</span>
+              </button>
+            </div>
           </td>
         </tr>
       </tbody>
@@ -89,6 +108,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+
+const emit = defineEmits(['ver-detalle', 'cambiar-estado'])
 
 const props = defineProps({
   items: {

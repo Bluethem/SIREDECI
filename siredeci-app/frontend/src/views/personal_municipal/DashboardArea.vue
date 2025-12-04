@@ -82,8 +82,23 @@
               <div class="flex items-center justify-between">
                 <h2 class="text-sm font-semibold text-slate-900">Flujo Operativo (Últimos 30 días)</h2>
               </div>
-              <div class="flex-1 flex items-center justify-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl py-10">
-                <span>Gráfico de líneas / barras pendiente de implementar</span>
+              <div
+                v-if="flujoDatos && flujoDatos.length"
+                class="flex-1 flex flex-col gap-3 text-xs text-slate-600 border border-slate-100 rounded-xl px-4 py-3 bg-slate-50"
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[11px] text-slate-500">Total diario de denuncias registradas en el área</span>
+                  <span class="text-[11px] text-slate-500">Máx: {{ maxFlujoTotal }}</span>
+                </div>
+                <div class="w-full h-40">
+                  <canvas ref="flujoCanvas"></canvas>
+                </div>
+              </div>
+              <div
+                v-else
+                class="flex-1 flex items-center justify-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl py-10"
+              >
+                <span>No hay datos de denuncias para los últimos 30 días en tu área.</span>
               </div>
             </div>
           </div>
@@ -134,31 +149,119 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import axios from 'axios'
+import { Chart } from 'chart.js/auto'
 import SidebarMunicipal from '@/components/SidebarMunicipal.vue'
 
 const resumen = ref(null)
 const denunciasArea = ref([])
+const flujoDatos = ref([])
+const flujoCanvas = ref(null)
+let flujoChart = null
 
 const cargarDashboard = async () => {
   try {
-    const [resResumen, resDenuncias] = await Promise.all([
-      axios.get('/api/municipal/dashboard/summary/'),
-      axios.get('/api/municipal/mi-area/denuncias/')
+    const [resResumen, resDenuncias, resFlujo] = await Promise.all([
+      axios.get('/municipal/dashboard/summary/'),
+      axios.get('/municipal/mi-area/denuncias/'),
+      axios.get('/municipal/dashboard/flujo/')
     ])
 
     resumen.value = resResumen.data || null
     const dataDen = Array.isArray(resDenuncias.data) ? resDenuncias.data : []
     denunciasArea.value = dataDen
+    flujoDatos.value = Array.isArray(resFlujo.data) ? resFlujo.data : []
   } catch (error) {
     console.error('Error al cargar dashboard de área:', error)
     resumen.value = null
     denunciasArea.value = []
+    flujoDatos.value = []
   }
 }
 
 onMounted(cargarDashboard)
+
+// Renderizar/actualizar gráfico de flujo operativo
+const renderFlujoChart = () => {
+  if (!flujoCanvas.value) return
+
+  const ctx = flujoCanvas.value.getContext('2d')
+  if (!ctx) return
+
+  const labels = flujoDatos.value.map((p) => p.fecha)
+  const data = flujoDatos.value.map((p) => p.total)
+
+  if (flujoChart) {
+    flujoChart.data.labels = labels
+    flujoChart.data.datasets[0].data = data
+    flujoChart.update()
+    return
+  }
+
+  flujoChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Denuncias por día',
+          data,
+          backgroundColor: 'rgba(14, 165, 233, 0.7)',
+          borderRadius: 4,
+          maxBarThickness: 18
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          ticks: {
+            maxTicksLimit: 6,
+            color: '#64748b',
+            font: { size: 10 }
+          },
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+            color: '#64748b',
+            font: { size: 10 }
+          },
+          grid: { color: 'rgba(148, 163, 184, 0.2)' }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.parsed.y} denuncia(s)`
+          }
+        }
+      }
+    }
+  })
+}
+
+watch(
+  flujoDatos,
+  (nuevo) => {
+    if (!nuevo || !nuevo.length) return
+    renderFlujoChart()
+  },
+  { deep: true }
+)
+
+onBeforeUnmount(() => {
+  if (flujoChart) {
+    flujoChart.destroy()
+    flujoChart = null
+  }
+})
 
 const totalDenuncias = computed(() => {
   if (resumen.value && typeof resumen.value.total_denuncias === 'number') {
@@ -230,6 +333,11 @@ const estadoChipClass = (estado) => {
       return 'bg-slate-100 text-slate-700 border border-slate-200'
   }
 }
+
+const maxFlujoTotal = computed(() => {
+  if (!flujoDatos.value.length) return 0
+  return flujoDatos.value.reduce((max, p) => (p.total > max ? p.total : max), 0)
+})
 </script>
 
 <style scoped>

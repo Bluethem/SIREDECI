@@ -62,7 +62,7 @@ const grupos = ref([])
 
 const cargarDuplicadas = async () => {
   try {
-    const response = await axios.get('/api/municipal/duplicadas/')
+    const response = await axios.get('/municipal/duplicadas/')
     const data = Array.isArray(response.data) ? response.data : []
 
     grupos.value = data.map((d) => ({

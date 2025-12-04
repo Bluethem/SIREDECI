@@ -48,7 +48,11 @@
           </div>
 
           <!-- Tabla de denuncias pendientes -->
-          <TablaPendientesAsignar :items="denunciasFiltradas" @ver-detalle="abrirDetalle" />
+          <TablaPendientesAsignar
+            :items="denunciasFiltradas"
+            @ver-detalle="abrirDetalle"
+            @asignar="asignarDesdeTabla"
+          />
         </div>
       </section>
     </main>
@@ -63,7 +67,9 @@
         <div class="flex-1 flex flex-col border-r border-slate-200 bg-slate-50">
           <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
             <div>
-              <h2 class="text-lg font-bold text-slate-900">{{ denunciaSeleccionada.asunto }}</h2>
+              <h2 class="text-lg font-bold text-slate-900">
+                {{ detalleDenuncia?.titulo || denunciaSeleccionada.asunto }}
+              </h2>
               <p class="text-xs text-slate-500 mt-1">ID de la Denuncia: #{{ denunciaSeleccionada.id }}</p>
             </div>
             <button
@@ -75,42 +81,39 @@
           </div>
 
           <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            <!-- Alerta de posible duplicado -->
-            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-              <span class="font-semibold mr-1">POSIBLE DUPLICADO (RF-18):</span>
-              Vinculada a la denuncia
-              <button class="font-semibold underline hover:text-amber-900">#123123</button>.
-            </div>
-
             <!-- Descripción del ciudadano -->
             <section class="space-y-2">
               <h3 class="text-sm font-semibold text-slate-900">Descripción del Ciudadano</h3>
               <p class="text-sm text-slate-700 leading-relaxed bg-white rounded-xl border border-slate-200 px-4 py-3">
-                Hay una fuga de agua constante en la esquina de la Calle Falsa con Avenida Siempre Viva. Lleva varios
-                días así y se está desperdiciando mucha agua. Además, el asfalto se está empezando a levantar y genera
-                un charco grande que dificulta el paso de los peatones y vehículos. Adjunto fotos del lugar para mayor
-                claridad.
+                {{ detalleDenuncia?.descripcion || 'Sin descripción disponible para esta denuncia.' }}
               </p>
             </section>
 
             <!-- Evidencias adjuntas -->
             <section class="space-y-2">
               <h3 class="text-sm font-semibold text-slate-900">Evidencias Adjuntas</h3>
-              <div class="grid grid-cols-3 gap-3">
-                <div class="h-28 rounded-xl bg-cover bg-center bg-slate-200" style="background-image: url('https://images.pexels.com/photos/129857/pexels-photo-129857.jpeg?auto=compress&cs=tinysrgb&w=600');"></div>
-                <div class="h-28 rounded-xl bg-cover bg-center bg-slate-200" style="background-image: url('https://images.pexels.com/photos/158672/broken-road-pothole-damaged-bridge-158672.jpeg?auto=compress&cs=tinysrgb&w=600');"></div>
-                <div class="h-28 rounded-xl border border-slate-200 bg-white flex flex-col items-center justify-center text-xs text-slate-500 gap-1">
-                  <span class="material-symbols-outlined text-[32px] text-slate-400">description</span>
-                  <span>documento.pdf</span>
+              <div v-if="detalleDenuncia?.evidencias?.length" class="space-y-2">
+                <div
+                  v-for="ev in detalleDenuncia.evidencias"
+                  :key="ev.id_evidencia"
+                  class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
+                >
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px] text-slate-400">attach_file</span>
+                    <span>{{ ev.nombre_archivo }}</span>
+                  </div>
+                  <span class="text-[11px] text-slate-400">{{ ev.tipo_archivo }}</span>
                 </div>
               </div>
+              <p v-else class="text-xs text-slate-500">No hay evidencias registradas para esta denuncia.</p>
             </section>
 
             <!-- Ubicación de la incidencia -->
             <section class="space-y-2 pb-4">
               <h3 class="text-sm font-semibold text-slate-900">Ubicación de la Incidencia</h3>
-              <div class="h-64 rounded-xl border border-slate-200 bg-slate-200 flex items-center justify-center text-slate-500 text-sm">
-                300×300
+              <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-700 space-y-1">
+                <p><span class="font-semibold">Dirección:</span> {{ detalleDenuncia?.ubicacion?.direccion || 'Sin dirección detallada' }}</p>
+                <p><span class="font-semibold">Distrito:</span> {{ detalleDenuncia?.ubicacion?.distrito || 'Sin distrito' }}</p>
               </div>
             </section>
           </div>
@@ -127,18 +130,21 @@
               <h4 class="text-xs font-semibold text-slate-700 uppercase tracking-wide">Asignar al área responsable (RF-14)</h4>
               <select
                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                disabled
               >
-                <option selected>Seleccionar un área...</option>
-                <option>Alumbrado Público</option>
-                <option>Vialidad</option>
-                <option>Seguridad</option>
+                <option>
+                  Área actual: {{ denunciaSeleccionada?.ubicacion || 'Según categoría de área' }}
+                </option>
               </select>
             </section>
 
             <button
-              class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#0ea5e9] text-white text-sm font-semibold shadow-sm hover:bg-[#0284c7]"
+              class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#0ea5e9] text-white text-sm font-semibold shadow-sm hover:bg-[#0284c7] disabled:opacity-60 disabled:cursor-not-allowed"
+              :disabled="!denunciaSeleccionada || loadingAsignar"
+              @click="confirmarAsignacion"
             >
-              CONFIRMAR Y ASIGNAR DENUNCIA
+              <span v-if="!loadingAsignar">CONFIRMAR Y ASIGNAR DENUNCIA</span>
+              <span v-else>Asignando...</span>
             </button>
 
             <div class="border-t border-slate-200 pt-4 mt-2">
@@ -161,16 +167,21 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import SidebarMunicipal from '@/components/SidebarMunicipal.vue'
 import TablaPendientesAsignar from '@/components/TablaPendientesAsignar.vue'
 
+const router = useRouter()
+
 const denuncias = ref([])
 const textoBusqueda = ref('')
+const loadingAsignar = ref(false)
+const error = ref(null)
 
 const cargarPendientes = async () => {
   try {
-    const response = await axios.get('/api/municipal/pendientes-asignar/')
+    const response = await axios.get('/municipal/pendientes-asignar/')
     const data = Array.isArray(response.data) ? response.data : []
 
     denuncias.value = data.map((d) => ({
@@ -203,15 +214,61 @@ const denunciasFiltradas = computed(() => {
 
 const detalleAbierto = ref(false)
 const denunciaSeleccionada = ref(null)
+const detalleDenuncia = ref(null)
 
-const abrirDetalle = (denuncia) => {
+const cargarDetalleDenuncia = async (id) => {
+  try {
+    const response = await axios.get(`/denuncias/${id}/`)
+    detalleDenuncia.value = response.data
+  } catch (e) {
+    console.error('Error al cargar detalle de denuncia pendiente:', e)
+  }
+}
+
+const abrirDetalle = async (denuncia) => {
   denunciaSeleccionada.value = denuncia
   detalleAbierto.value = true
+  detalleDenuncia.value = null
+  await cargarDetalleDenuncia(denuncia.id)
 }
 
 const cerrarDetalle = () => {
   detalleAbierto.value = false
   denunciaSeleccionada.value = null
+  detalleDenuncia.value = null
+}
+
+const removerDeLista = (id) => {
+  denuncias.value = denuncias.value.filter((d) => d.id !== id)
+}
+
+const asignarDenuncia = async (denuncia) => {
+  if (!denuncia) return
+  try {
+    loadingAsignar.value = true
+    error.value = null
+
+    await axios.post(`/municipal/pendientes-asignar/${denuncia.id}/asignar/`)
+
+    removerDeLista(denuncia.id)
+    // Redirigir a denuncias asignadas del área
+    router.push('/municipal/mi-area')
+  } catch (e) {
+    console.error('Error al asignar denuncia pendiente:', e)
+    error.value =
+      e.response?.data?.message || e.response?.data?.error || e.response?.data?.detail || 'No se pudo asignar la denuncia.'
+  } finally {
+    loadingAsignar.value = false
+  }
+}
+
+const asignarDesdeTabla = (denuncia) => {
+  asignarDenuncia(denuncia)
+}
+
+const confirmarAsignacion = () => {
+  if (!denunciaSeleccionada.value) return
+  asignarDenuncia(denunciaSeleccionada.value)
 }
 </script>
 
