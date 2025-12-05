@@ -92,29 +92,32 @@
             <!-- Evidencias adjuntas -->
             <section class="space-y-2">
               <h3 class="text-sm font-semibold text-slate-900">Evidencias Adjuntas</h3>
-              <div v-if="detalleDenuncia?.evidencias?.length" class="space-y-2">
+              <div
+                v-if="detalleDenuncia?.evidencias?.length"
+                class="grid grid-cols-2 md:grid-cols-4 gap-3"
+              >
                 <div
                   v-for="ev in detalleDenuncia.evidencias"
                   :key="ev.id_evidencia"
-                  class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
+                  class="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100 cursor-pointer"
+                  @click="abrirEnNuevaPestana(ev)"
                 >
-                  <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[18px] text-slate-400">attach_file</span>
-                    <span>{{ ev.nombre_archivo }}</span>
+                  <img
+                    v-if="ev.ruta_almacenamiento"
+                    :src="buildMediaUrl(ev.ruta_almacenamiento)"
+                    :alt="ev.nombre_archivo"
+                    class="w-full h-full object-cover"
+                  />
+                  <div
+                    v-else
+                    class="w-full h-full flex items-center justify-center text-slate-400 text-xs px-2 text-center"
+                  >
+                    {{ ev.nombre_archivo }}
                   </div>
-                  <span class="text-[11px] text-slate-400">{{ ev.tipo_archivo }}</span>
                 </div>
               </div>
-              <p v-else class="text-xs text-slate-500">No hay evidencias registradas para esta denuncia.</p>
-            </section>
-
-            <!-- Ubicación de la incidencia -->
-            <section class="space-y-2 pb-4">
-              <h3 class="text-sm font-semibold text-slate-900">Ubicación de la Incidencia</h3>
-              <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-700 space-y-1">
-                <p><span class="font-semibold">Dirección:</span> {{ detalleDenuncia?.ubicacion?.direccion || 'Sin dirección detallada' }}</p>
-                <p><span class="font-semibold">Distrito:</span> {{ detalleDenuncia?.ubicacion?.distrito || 'Sin distrito' }}</p>
-              </div>
+              <p><span class="font-semibold">Dirección:</span> {{ detalleDenuncia?.ubicacion?.direccion || 'Sin dirección detallada' }}</p>
+              <p><span class="font-semibold">Distrito:</span> {{ detalleDenuncia?.ubicacion?.distrito || 'Sin distrito' }}</p>
             </section>
           </div>
         </div>
@@ -171,6 +174,21 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import SidebarMunicipal from '@/components/SidebarMunicipal.vue'
 import TablaPendientesAsignar from '@/components/TablaPendientesAsignar.vue'
+
+// Base para construir URLs de evidencias (remueve el sufijo /api de la URL base)
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const MEDIA_BASE = API_BASE.replace(/\/?api\/?$/, '') + '/media/'
+
+const buildMediaUrl = (relativePath) => {
+  if (!relativePath) return ''
+  return `${MEDIA_BASE}${relativePath}`
+}
+
+const abrirEnNuevaPestana = (ev) => {
+  if (!ev?.ruta_almacenamiento) return
+  const url = buildMediaUrl(ev.ruta_almacenamiento)
+  window.open(url, '_blank')
+}
 
 const router = useRouter()
 

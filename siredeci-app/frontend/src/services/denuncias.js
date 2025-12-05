@@ -58,11 +58,20 @@ export const denunciasService = {
 
   /**
    * Crear una nueva denuncia
-   * @param {Object} denunciaData - Datos de la denuncia
+   * @param {Object|FormData} denunciaData - Datos de la denuncia o FormData (cuando se envían evidencias)
    * @returns {Promise}
    */
   async crearDenuncia(denunciaData) {
-    const response = await api.post('/denuncias/', denunciaData)
+    const config = {}
+
+    // Si se envía FormData, ajustar encabezado para multipart
+    if (denunciaData instanceof FormData) {
+      config.headers = {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+
+    const response = await api.post('/denuncias/', denunciaData, config)
     return response.data
   },
 

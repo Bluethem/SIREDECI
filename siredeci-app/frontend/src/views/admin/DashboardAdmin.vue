@@ -258,18 +258,16 @@
               </div>
             </div>
             <div class="h-72 w-full">
-              <svg height="100%" preserveAspectRatio="none" viewBox="0 0 500 200" width="100%">
-                <path d="M0 150 C 40 120, 80 160, 120 140 S 200 80, 240 100 S 320 180, 360 160 S 440 100, 500 120" fill="none" stroke="#2A7DBD" stroke-width="2"></path>
-                <path d="M0 180 C 40 160, 80 190, 120 170 S 200 120, 240 140 S 320 200, 360 180 S 440 130, 500 150" fill="none" stroke="#2dd4bf" stroke-width="2"></path>
-                <line stroke="#D1D5DB" stroke-width="1" x1="0" x2="500" y1="195" y2="195"></line>
-                <g class="text-xs fill-current text-gray-500">
-                  <text id="temporal-l1" x="0" y="210">Sem 1</text>
-                  <text id="temporal-l2" x="115" y="210">Sem 2</text>
-                  <text id="temporal-l3" x="230" y="210">Sem 3</text>
-                  <text id="temporal-l4" x="345" y="210">Sem 4</text>
-                  <text id="temporal-l5" x="470" y="210">Fin</text>
-                </g>
-              </svg>
+              <canvas id="temporal-chart"></canvas>
+            </div>
+            <div v-if="temporalSeries && temporalSeries.length" class="mt-3 text-xs text-gray-600 space-y-1">
+              <div v-for="item in temporalSeries" :key="item.label" class="flex justify-between">
+                <span class="font-medium">{{ item.label }}</span>
+                <span class="flex gap-3">
+                  <span>Reg.: <strong>{{ item.registradas }}</strong></span>
+                  <span>Res.: <strong>{{ item.resueltas }}</strong></span>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -306,36 +304,10 @@
 
           <div class="lg:col-span-3 flex flex-col gap-4 rounded-xl border border-medium-gray p-6 bg-white">
             <p class="text-lg font-semibold text-dark-blue">Denuncias por Prioridad</p>
-            <div class="h-64 w-full flex items-end gap-2">
-              <div class="w-full flex flex-col justify-end h-full bg-gray-100 rounded-t-lg">
-                <div id="prio-1-baja" class="bg-green-500" style="height: 25%"></div>
-                <div id="prio-1-media" class="bg-yellow-400" style="height: 40%"></div>
-                <div id="prio-1-alta" class="bg-orange-500" style="height: 20%"></div>
-                <div id="prio-1-urgente" class="bg-red-600" style="height: 15%"></div>
-              </div>
-              <div class="w-full flex flex-col justify-end h-full bg-gray-100 rounded-t-lg">
-                <div id="prio-2-baja" class="bg-green-500" style="height: 30%"></div>
-                <div id="prio-2-media" class="bg-yellow-400" style="height: 35%"></div>
-                <div id="prio-2-alta" class="bg-orange-500" style="height: 25%"></div>
-                <div id="prio-2-urgente" class="bg-red-600" style="height: 10%"></div>
-              </div>
-              <div class="w-full flex flex-col justify-end h-full bg-gray-100 rounded-t-lg">
-                <div id="prio-3-baja" class="bg-green-500" style="height: 15%"></div>
-                <div id="prio-3-media" class="bg-yellow-400" style="height: 30%"></div>
-                <div id="prio-3-alta" class="bg-orange-500" style="height: 35%"></div>
-                <div id="prio-3-urgente" class="bg-red-600" style="height: 20%"></div>
-              </div>
-              <div class="w-full flex flex-col justify-end h-full bg-gray-100 rounded-t-lg">
-                <div id="prio-4-baja" class="bg-green-500" style="height: 20%"></div>
-                <div id="prio-4-media" class="bg-yellow-400" style="height: 25%"></div>
-                <div id="prio-4-alta" class="bg-orange-500" style="height: 30%"></div>
-                <div id="prio-4-urgente" class="bg-red-600" style="height: 25%"></div>
-              </div>
+            <div class="h-64 w-full">
+              <canvas id="prioridades-chart"></canvas>
             </div>
-            <div class="flex justify-around text-xs text-gray-500">
-              <span id="prio-l1">Semana 1</span><span id="prio-l2">Semana 2</span><span id="prio-l3">Semana 3</span><span id="prio-l4">Semana 4</span>
-            </div>
-            <div class="flex justify-center gap-4 text-xs">
+            <div class="flex justify-center gap-4 text-xs mt-2">
               <span class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-full bg-red-600"></div>Urgente</span>
               <span class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-full bg-orange-500"></div>Alta</span>
               <span class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-full bg-yellow-400"></div>Media</span>
@@ -402,6 +374,7 @@
 
 <script>
 import axios from 'axios'
+import { Chart } from 'chart.js/auto'
 import SidebarAdmin from '@/components/SidebarAdmin.vue'
 export default {
   name: 'DashboardAdmin',
@@ -412,7 +385,10 @@ export default {
       temporalGranularity: 'week',
       showCustomRange: false,
       customFrom: '',
-      customTo: ''
+      customTo: '',
+      temporalSeries: [],
+      temporalChart: null,
+      prioridadesChart: null
     }
   },
   computed: {
@@ -557,11 +533,61 @@ export default {
         params.granularity = this.temporalGranularity
         const { data } = await axios.get('/reportes/dashboard/temporal/', { params })
         const series = data.series || []
+        this.temporalSeries = series
         const labels = series.map(s => s.label)
-        ;['temporal-l1', 'temporal-l2', 'temporal-l3', 'temporal-l4', 'temporal-l5'].forEach((id, idx) => {
-          const el = document.getElementById(id)
-          if (el && labels[idx]) el.textContent = labels[idx]
-        })
+
+        // Crear o actualizar gráfico de evolución temporal con Chart.js
+        const canvas = document.getElementById('temporal-chart')
+        if (canvas) {
+          const ctx = canvas.getContext('2d')
+          if (this.temporalChart) {
+            this.temporalChart.data.labels = labels
+            this.temporalChart.data.datasets[0].data = series.map(s => s.registradas || 0)
+            this.temporalChart.data.datasets[1].data = series.map(s => s.resueltas || 0)
+            this.temporalChart.update()
+          } else {
+            this.temporalChart = new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label: 'Registradas',
+                    data: series.map(s => s.registradas || 0),
+                    borderColor: '#2A7DBD',
+                    backgroundColor: 'rgba(42,125,189,0.15)',
+                    fill: true,
+                    tension: 0.3
+                  },
+                  {
+                    label: 'Resueltas',
+                    data: series.map(s => s.resueltas || 0),
+                    borderColor: '#14b8a6',
+                    backgroundColor: 'rgba(20,184,166,0.15)',
+                    fill: true,
+                    tension: 0.3
+                  }
+                ]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { position: 'bottom' }
+                },
+                scales: {
+                  x: {
+                    ticks: { maxTicksLimit: 6 }
+                  },
+                  y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0 }
+                  }
+                }
+              }
+            })
+          }
+        }
       } catch (e) {
         console.error('Error temporal', e)
       }
@@ -571,22 +597,73 @@ export default {
       try {
         const { data } = await axios.get('/reportes/dashboard/prioridades/', { params: buildParams() })
         const series = data.series || []
-        const setCol = (colIdx, baja, media, alta, urgente) => {
-          const total = (baja + media + alta + urgente) || 1
-          const setH = (id, val) => {
-            const el = document.getElementById(id)
-            if (el) el.style.height = `${Math.round(val * 100 / total)}%`
+        const labels = series.map(s => s.label)
+
+        const bajas = series.map(s => s.Baja || 0)
+        const medias = series.map(s => s.Media || 0)
+        const altas = series.map(s => s.Alta || 0)
+        const urgentes = series.map(s => s.Urgente || 0)
+
+        const canvas = document.getElementById('prioridades-chart')
+        if (canvas) {
+          const ctx = canvas.getContext('2d')
+          const datasets = [
+            {
+              label: 'Urgente',
+              data: urgentes,
+              backgroundColor: '#dc2626',
+              stack: 'stack1'
+            },
+            {
+              label: 'Alta',
+              data: altas,
+              backgroundColor: '#f97316',
+              stack: 'stack1'
+            },
+            {
+              label: 'Media',
+              data: medias,
+              backgroundColor: '#facc15',
+              stack: 'stack1'
+            },
+            {
+              label: 'Baja',
+              data: bajas,
+              backgroundColor: '#22c55e',
+              stack: 'stack1'
+            }
+          ]
+
+          if (this.prioridadesChart) {
+            this.prioridadesChart.data.labels = labels
+            this.prioridadesChart.data.datasets = datasets
+            this.prioridadesChart.update()
+          } else {
+            this.prioridadesChart = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels,
+                datasets
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { position: 'bottom' }
+                },
+                scales: {
+                  x: {
+                    stacked: true
+                  },
+                  y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: { precision: 0 }
+                  }
+                }
+              }
+            })
           }
-          setH(`prio-${colIdx}-baja`, baja)
-          setH(`prio-${colIdx}-media`, media)
-          setH(`prio-${colIdx}-alta`, alta)
-          setH(`prio-${colIdx}-urgente`, urgente)
-        }
-        for (let i = 0; i < Math.min(4, series.length); i++) {
-          const s = series[i]
-          setCol(i + 1, s.Baja || 0, s.Media || 0, s.Alta || 0, s.Urgente || 0)
-          const lbl = document.getElementById(`prio-l${i + 1}`)
-          if (lbl) lbl.textContent = s.label
         }
       } catch (e) {
         console.error('Error prioridades', e)

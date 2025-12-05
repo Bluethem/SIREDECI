@@ -260,6 +260,10 @@ const comentario = ref('')
 const loading = ref(true)
 const error = ref(null)
 
+// Base para construir URLs de evidencias (remueve el sufijo /api de la URL base)
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const MEDIA_BASE = API_BASE.replace(/\/?api\/?$/, '') + '/media/'
+
 // Datos de la denuncia (se cargan desde el API)
 const denuncia = ref({
   id: null,
@@ -296,8 +300,17 @@ onMounted(async () => {
     
     // Cargar denuncia desde el API
     const response = await denunciasService.getDenuncia(id)
-    
+
     // Mapear respuesta del backend a estructura del componente
+    const evidenciasUrls = (response.evidencias || []).map((ev) => {
+      // El backend entrega ruta_almacenamiento relativa (por ejemplo: evidencias/DEN-2025-00001/archivo.jpg)
+      // Construimos la URL completa apuntando a /media/
+      if (ev.ruta_almacenamiento) {
+        return `${MEDIA_BASE}${ev.ruta_almacenamiento}`
+      }
+      return null
+    }).filter(Boolean)
+
     denuncia.value = {
       id: response.id_denuncia,
       codigo: response.codigo_denuncia,
@@ -316,7 +329,7 @@ onMounted(async () => {
         latitud: parseFloat(response.ubicacion?.latitud || -12.0464),
         longitud: parseFloat(response.ubicacion?.longitud || -77.0428)
       },
-      evidencias: response.evidencias || [],
+      evidencias: evidenciasUrls,
       historial: [
         {
           fecha: response.fecha_registro,

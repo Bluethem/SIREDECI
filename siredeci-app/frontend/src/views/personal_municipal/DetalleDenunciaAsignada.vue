@@ -79,12 +79,36 @@
               <!-- Fotos de evidencia del ciudadano -->
               <section class="rounded-2xl bg-white border border-slate-200 px-5 py-4 space-y-3">
                 <h2 class="text-sm font-semibold text-slate-900">Fotos de Evidencia del Ciudadano</h2>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div class="h-28 rounded-xl bg-slate-200"></div>
-                  <div class="h-28 rounded-xl bg-slate-200"></div>
-                  <div class="h-28 rounded-xl bg-slate-200"></div>
-                  <div class="h-28 rounded-xl bg-slate-200"></div>
+                <div
+                  v-if="denuncia?.evidencias?.length"
+                  class="grid grid-cols-2 md:grid-cols-4 gap-3"
+                >
+                  <div
+                    v-for="ev in denuncia.evidencias"
+                    :key="ev.id_evidencia"
+                    class="relative group h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 cursor-pointer"
+                    @click="abrirEvidencia(ev)"
+                  >
+                    <img
+                      v-if="ev.ruta_almacenamiento"
+                      :src="buildMediaUrl(ev.ruta_almacenamiento)"
+                      :alt="ev.nombre_archivo"
+                      class="w-full h-full object-cover"
+                    />
+                    <div
+                      v-else
+                      class="w-full h-full flex items-center justify-center text-slate-400 text-xs px-2 text-center"
+                    >
+                      {{ ev.nombre_archivo || 'Evidencia sin vista previa' }}
+                    </div>
+                    <div
+                      class="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-white px-1.5 py-0.5 truncate group-hover:bg-black/80"
+                    >
+                      {{ ev.nombre_archivo }}
+                    </div>
+                  </div>
                 </div>
+                <p v-else class="text-xs text-slate-500">No hay evidencias cargadas para esta denuncia.</p>
               </section>
 
               <!-- Mapa de ubicación (placeholder con dirección real si existe) -->

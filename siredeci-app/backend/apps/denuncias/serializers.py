@@ -1,4 +1,7 @@
 from rest_framework import serializers
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import hashlib
 from .models import Denuncia, Ubicacion, Evidencia, Seguimiento
 from apps.categorias.models import Categoria
 from apps.ciudadanos.models import Ciudadano
@@ -158,16 +161,30 @@ class DenunciaCreateSerializer(serializers.ModelSerializer):
         
         # Crear evidencias si existen
         for evidencia_file in evidencias_files:
-            # Aquí se guardaría el archivo en el storage
-            # Por ahora solo creamos el registro
+            # Construir ruta base para la denuncia
+            relative_path = f'evidencias/{denuncia.codigo_denuncia}/{evidencia_file.name}'
+
+            # Calcular hash del archivo (SHA-256)
+            file_bytes = evidencia_file.read()
+            sha256_hash = hashlib.sha256(file_bytes).hexdigest()
+
+            # Si ya existe una evidencia con este hash, omitir para evitar duplicados
+            if Evidencia.objects.filter(hash_archivo=sha256_hash).exists():
+                continue
+
+            # Guardar archivo en el storage usando el contenido leído
+            saved_path = default_storage.save(relative_path, ContentFile(file_bytes))
+
+            # Crear registro de Evidencia
             Evidencia.objects.create(
                 nombre_archivo=evidencia_file.name,
-                ruta_almacenamiento=f'evidencias/{denuncia.codigo_denuncia}/{evidencia_file.name}',
-                tipo_archivo=evidencia_file.content_type,
-                tamaño_bytes=evidencia_file.size,
+                ruta_almacenamiento=saved_path,
+                tipo_archivo=getattr(evidencia_file, 'content_type', ''),
+                tamaño_bytes=len(file_bytes),
+                hash_archivo=sha256_hash,
                 id_denuncia=denuncia
             )
-        
+
         return denuncia
 
 

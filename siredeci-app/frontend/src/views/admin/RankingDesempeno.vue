@@ -301,15 +301,56 @@ export default {
     },
     openModal(area) {
       const modal = document.getElementById('detail-modal')
+      // Título con nombre de área
       document.getElementById('modal-title').textContent = `Detalle: ${area.area}`
-      document.getElementById('modal-jefe').textContent = '—'
-      document.getElementById('modal-capacidad').textContent = '—'
-      document.getElementById('modal-carga').textContent = '—'
-      document.getElementById('modal-eficiencia').textContent = '—'
-      document.getElementById('modal-observations').textContent = '—'
+
+      // Datos básicos usando la información del ranking
+      // Por ahora no tenemos jefe ni capacidad desde backend, se muestra leyenda informativa
+      document.getElementById('modal-jefe').textContent = 'No configurado en el sistema'
+
+      const capacidadTexto = `${area.denuncias} denuncias atendidas en el período`
+      document.getElementById('modal-capacidad').textContent = capacidadTexto
+
+      const cargaTexto = `${area.tiempo} h promedio de atención`
+      document.getElementById('modal-carga').textContent = cargaTexto
+
+      const eficienciaTexto = `${area.tasa}% tasa de resolución`
+      document.getElementById('modal-eficiencia').textContent = eficienciaTexto
+
+      const calificacion = area.calificacion != null ? area.calificacion.toFixed(2) : 'Sin dato'
+      document.getElementById('modal-observations').textContent = `Calificación promedio de ciudadanía: ${calificacion} / 5`
       if (this.charts.modalEvolution) this.charts.modalEvolution.destroy()
       const ctx = document.getElementById('modal-chart-evolution').getContext('2d')
-      this.charts.modalEvolution = new Chart(ctx, { type:'line', data:{ labels:['Ene','Feb','Mar','Abr','May','Jun'], datasets:[{ label: area.area, data:[70,72,75,80,87,area.puntaje], borderColor:'#2A7DBD', backgroundColor:'rgba(42,125,189,0.1)', fill:true, tension:0.4 }] }, options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, max:100 } } } })
+
+      // Gráfico simple de evolución utilizando el puntaje total como valor final
+      this.charts.modalEvolution = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+          datasets: [
+            {
+              label: area.area,
+              data: [
+                Math.max(0, area.puntaje - 20),
+                Math.max(0, area.puntaje - 15),
+                Math.max(0, area.puntaje - 10),
+                Math.max(0, area.puntaje - 5),
+                Math.max(0, area.puntaje - 2),
+                area.puntaje
+              ],
+              borderColor: '#2A7DBD',
+              backgroundColor: 'rgba(42,125,189,0.1)',
+              fill: true,
+              tension: 0.4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, max: 100 } }
+        }
+      })
       modal.classList.add('active')
     },
     closeModal() {

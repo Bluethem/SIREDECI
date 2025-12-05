@@ -253,7 +253,7 @@ watch(
     if (!nuevo || !nuevo.length) return
     renderFlujoChart()
   },
-  { deep: true }
+  { deep: true, flush: 'post' }
 )
 
 onBeforeUnmount(() => {

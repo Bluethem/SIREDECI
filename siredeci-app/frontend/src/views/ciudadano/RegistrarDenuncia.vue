@@ -337,6 +337,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import NavbarCiudadano from '@/components/NavbarCiudadano.vue'
 import denunciasService from '@/services/denuncias'
+import categoriasService from '@/services/categorias'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -388,62 +389,7 @@ const steps = [
   }
 ]
 
-const categories = ref([
-  {
-    id: 1,
-    name: 'Alumbrado Público',
-    description: 'Postes dañados, lámparas quemadas o zonas sin iluminación.',
-    icon: 'lightbulb',
-    iconColor: 'text-yellow-600 dark:text-yellow-400',
-    bgColor: 'bg-yellow-100 dark:bg-yellow-900/50',
-    avgTime: '72 horas'
-  },
-  {
-    id: 2,
-    name: 'Vialidad y Bacheo',
-    description: 'Baches, pavimento dañado o problemas en calles y avenidas.',
-    icon: 'route',
-    iconColor: 'text-orange-600 dark:text-orange-400',
-    bgColor: 'bg-orange-100 dark:bg-orange-900/50',
-    avgTime: '5 días'
-  },
-  {
-    id: 3,
-    name: 'Limpia y Recolección de Basura',
-    description: 'Basura acumulada en la vía pública o fallas en el servicio.',
-    icon: 'recycling',
-    iconColor: 'text-green-600 dark:text-green-400',
-    bgColor: 'bg-green-100 dark:bg-green-900/50',
-    avgTime: '48 horas'
-  },
-  {
-    id: 4,
-    name: 'Fugas de Agua',
-    description: 'Tuberías rotas, alcantarillas obstruidas o desperdicio de agua.',
-    icon: 'water_drop',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/50',
-    avgTime: '24 horas'
-  },
-  {
-    id: 5,
-    name: 'Parques y Jardines',
-    description: 'Mantenimiento de áreas verdes, juegos o mobiliario.',
-    icon: 'park',
-    iconColor: 'text-teal-600 dark:text-teal-400',
-    bgColor: 'bg-teal-100 dark:bg-teal-900/50',
-    avgTime: '7 días'
-  },
-  {
-    id: 6,
-    name: 'Semáforos Descompuestos',
-    description: 'Semáforos que no funcionan o están mal sincronizados.',
-    icon: 'traffic',
-    iconColor: 'text-red-600 dark:text-red-400',
-    bgColor: 'bg-red-100 dark:bg-red-900/50',
-    avgTime: '8 horas'
-  }
-])
+const categories = ref([])
 
 const selectedCategory = ref(null)
 
@@ -464,6 +410,37 @@ const acceptedTerms = ref(false)
 
 let map = null
 let marker = null
+
+const cargarCategorias = async () => {
+  try {
+    const data = await categoriasService.getCategorias()
+
+    categories.value = data.map(cat => {
+      const bgColor = cat.color
+        ? `bg-[${cat.color}]`
+        : 'bg-gray-100 dark:bg-gray-900/50'
+
+      const iconColor = 'text-primary dark:text-primary'
+
+      const avgTime = cat.tiempo_respuesta_promedio
+        ? `${cat.tiempo_respuesta_promedio} horas`
+        : 'Sin dato'
+
+      return {
+        id: cat.id_categoria,
+        name: cat.nombre,
+        description: cat.descripcion || 'Sin descripción',
+        icon: cat.icono || 'flag',
+        iconColor,
+        bgColor,
+        avgTime
+      }
+    })
+  } catch (error) {
+    console.error('Error cargando categorías:', error)
+    categories.value = []
+  }
+}
 
 const canContinue = computed(() => {
   if (currentStep.value === 1) {
@@ -672,27 +649,35 @@ const submitDenuncia = async () => {
       direccion = `Ubicación: ${lat.toFixed(6)}°, ${lng.toFixed(6)}°`
     }
     
-    const denunciaData = {
-      titulo: form.value.titulo,
-      descripcion: form.value.descripcion,
-      id_categoria: selectedCategory.value.id,
-      id_ciudadano: user.id_ciudadano,
-      es_anonima: false, // Por defecto no es anónima si hay usuario
-      prioridad: 'Media', // Prioridad por defecto
-      ubicacion: {
-        latitud: lat,
-        longitud: lng,
-        direccion: direccion,
-        referencia: form.value.ubicacion.referencia || '',
-        distrito: form.value.ubicacion.distrito || 'Lima',
-        codigo_postal: form.value.ubicacion.codigoPostal || ''
-      }
-    }
+    // Construir FormData para enviar también las evidencias
+    const formData = new FormData()
     
-    console.log('Enviando denuncia al backend:', denunciaData)
+    formData.append('titulo', form.value.titulo)
+    formData.append('descripcion', form.value.descripcion)
+    formData.append('id_categoria', selectedCategory.value.id)
+    formData.append('id_ciudadano', user.id_ciudadano)
+    formData.append('es_anonima', 'false')
+    formData.append('prioridad', 'Media')
+    
+    // Campos de ubicación (DRF los mapeará al serializer Ubicacion por nombre)
+    formData.append('ubicacion.latitud', lat)
+    formData.append('ubicacion.longitud', lng)
+    formData.append('ubicacion.direccion', direccion)
+    formData.append('ubicacion.referencia', form.value.ubicacion.referencia || '')
+    formData.append('ubicacion.distrito', form.value.ubicacion.distrito || 'Lima')
+    formData.append('ubicacion.codigo_postal', form.value.ubicacion.codigoPostal || '')
+    
+    // Adjuntar evidencias (hasta 5 imágenes)
+    evidencias.value.forEach((ev) => {
+      if (ev.file) {
+        formData.append('evidencias_data', ev.file)
+      }
+    })
+    
+    console.log('Enviando denuncia al backend con FormData')
     
     // Llamar al API para registrar la denuncia
-    const response = await denunciasService.crearDenuncia(denunciaData)
+    const response = await denunciasService.crearDenuncia(formData)
     
     console.log('Respuesta del backend:', response)
     
@@ -758,6 +743,11 @@ onBeforeUnmount(() => {
     map = null
     marker = null
   }
+})
+
+onMounted(() => {
+  cargarCategorias()
+  initMap()
 })
 </script>
 
