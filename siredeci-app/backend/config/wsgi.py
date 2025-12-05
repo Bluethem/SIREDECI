@@ -12,6 +12,6 @@ import os
 from django.core.wsgi import get_wsgi_application
 
 # Forzar el uso de config.settings.direct (settings sin decouple, aptos para Render)
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.direct')
+os.environ['DJANGO_SETTINGS_MODULE'] = 'config.settings.direct'
 
 application = get_wsgi_application()
